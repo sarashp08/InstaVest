@@ -1,894 +1,974 @@
 import { useState, useEffect, useRef } from "react";
 
-const style = `
-  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap');
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  :root { --gold: #f59e0b; --gold-light: #fbbf24; --gold-dark: #d97706; --green: #10b981; --red: #ef4444; }
-  .dark { --bg:#08080f; --bg2:#0f0f1a; --card:#13131f; --card2:#1a1a2e; --border:rgba(255,255,255,0.07); --text:#f0f0f5; --text2:#9090a8; --text3:#55556a; --pill:rgba(255,255,255,0.06); --pill-text:#b0b0c8; }
-  .light { --bg:#f5f4ef; --bg2:#eeedea; --card:#ffffff; --card2:#f8f8f5; --border:rgba(0,0,0,0.08); --text:#12120f; --text2:#5a5a50; --text3:#aaaaaa; --pill:rgba(0,0,0,0.06); --pill-text:#444440; }
-  body { font-family:'DM Sans',sans-serif; }
-  .app { background:var(--bg); min-height:100vh; color:var(--text); transition:background 0.3s,color 0.3s; }
-
-  /* NAV */
-  .nav { position:fixed; top:0; left:0; right:0; z-index:100; display:flex; align-items:center; justify-content:space-between; padding:0 24px; height:60px; background:var(--bg); border-bottom:1px solid var(--border); backdrop-filter:blur(20px); }
-  .nav-logo { font-family:'Syne',sans-serif; font-weight:800; font-size:22px; letter-spacing:-0.5px; background:linear-gradient(135deg,var(--gold),var(--gold-light)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; cursor:pointer; }
-  .nav-logo span { color:var(--text); -webkit-text-fill-color:var(--text); }
-  .nav-right { display:flex; align-items:center; gap:10px; }
-  .theme-btn { background:var(--pill); border:1px solid var(--border); color:var(--text2); border-radius:20px; padding:6px 14px; cursor:pointer; font-size:13px; font-family:'DM Sans',sans-serif; transition:all 0.2s; }
-  .theme-btn:hover { background:var(--card2); }
-  .nav-tabs { display:flex; gap:4px; }
-  .nav-tab { padding:6px 14px; border-radius:20px; font-size:13px; font-family:'DM Sans',sans-serif; cursor:pointer; border:1px solid transparent; transition:all 0.2s; background:transparent; color:var(--text2); }
-  .nav-tab.active { background:var(--gold); color:#000; font-weight:600; border-color:var(--gold); }
-  .nav-tab:hover:not(.active) { background:var(--pill); color:var(--text); }
-  .admin-tab { background:rgba(239,68,68,0.1); color:#ef4444; border-color:rgba(239,68,68,0.3); }
-  .admin-tab.active { background:#ef4444; color:#fff; border-color:#ef4444; }
-  .admin-tab:hover:not(.active) { background:rgba(239,68,68,0.2); color:#ef4444; }
-
-  /* FEED */
-  .feed-container { padding-top:60px; display:flex; justify-content:center; background:var(--bg); min-height:100vh; }
-  .feed-center { display:flex; gap:32px; padding:32px 24px; max-width:1100px; width:100%; }
-  .feed-phone { flex-shrink:0; width:375px; background:var(--bg2); border-radius:32px; border:1px solid var(--border); overflow:hidden; height:calc(100vh - 124px); position:sticky; top:80px; }
-  .feed-scroll { height:100%; overflow-y:scroll; scroll-snap-type:y mandatory; scrollbar-width:none; }
-  .feed-scroll::-webkit-scrollbar { display:none; }
-
-  /* VIDEO CARD */
-  .video-card { width:100%; height:100%; min-height:calc(100vh - 124px); scroll-snap-align:start; position:relative; display:flex; flex-direction:column; justify-content:flex-end; overflow:hidden; flex-shrink:0; }
-  .video-bg { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:120px; z-index:0; }
-  .video-overlay { position:absolute; inset:0; z-index:1; }
-  .video-content { position:relative; z-index:2; padding:20px; }
-  .video-tags { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
-  .video-tag { background:rgba(245,158,11,0.2); color:var(--gold-light); border:1px solid rgba(245,158,11,0.3); padding:3px 10px; border-radius:20px; font-size:11px; font-weight:500; }
-  .video-title { font-family:'Syne',sans-serif; font-size:24px; font-weight:800; line-height:1.1; margin-bottom:6px; color:#fff; text-shadow:0 2px 12px rgba(0,0,0,0.5); }
-  .video-tagline { font-size:14px; color:rgba(255,255,255,0.75); margin-bottom:14px; line-height:1.4; }
-  .video-founder { display:flex; align-items:center; gap:8px; margin-bottom:14px; }
-  .founder-avatar { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700; color:#000; background:var(--gold); flex-shrink:0; }
-  .founder-name { font-size:13px; color:rgba(255,255,255,0.85); font-weight:500; }
-  .founder-title-small { font-size:11px; color:rgba(255,255,255,0.55); }
-  .funding-bar-wrap { margin-bottom:14px; }
-  .funding-bar-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
-  .funding-label { font-size:11px; color:rgba(255,255,255,0.6); }
-  .funding-amount { font-size:13px; font-weight:700; color:#fff; }
-  .funding-bar-bg { height:4px; background:rgba(255,255,255,0.15); border-radius:4px; overflow:hidden; }
-  .funding-bar-fill { height:100%; border-radius:4px; background:linear-gradient(90deg,var(--gold),var(--gold-light)); transition:width 1s ease; }
-  .video-actions { display:flex; gap:8px; margin-bottom:4px; }
-  .action-btn { display:flex; align-items:center; gap:5px; padding:8px 14px; border-radius:20px; border:none; font-size:13px; font-weight:600; cursor:pointer; font-family:'DM Sans',sans-serif; transition:all 0.2s; flex:1; justify-content:center; }
-  .btn-invest { background:var(--gold); color:#000; }
-  .btn-invest:hover { background:var(--gold-light); transform:scale(1.02); }
-  .btn-like { background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.2); color:#fff; flex:0; padding:8px 14px; }
-  .btn-like.liked { background:rgba(239,68,68,0.3); border-color:#ef4444; color:#fca5a5; }
-  .btn-play { background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.25); color:#fff; flex:0; padding:8px 14px; }
-  .btn-play:hover { background:rgba(255,255,255,0.25); }
-  .ticket-info { text-align:center; font-size:11px; color:rgba(255,255,255,0.45); padding-bottom:4px; }
-
-  /* VIDEO PLAYER MODAL */
-  .video-modal { position:fixed; inset:0; z-index:200; background:rgba(0,0,0,0.95); display:flex; align-items:center; justify-content:center; backdrop-filter:blur(10px); }
-  .video-player-wrap { width:min(400px,95vw); position:relative; }
-  .video-close { position:absolute; top:-44px; right:0; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); color:#fff; border-radius:20px; padding:6px 16px; cursor:pointer; font-size:13px; font-family:'DM Sans',sans-serif; z-index:10; }
-  .video-screen { width:100%; aspect-ratio:9/16; border-radius:24px; overflow:hidden; position:relative; background:#000; }
-  .video-screen-bg { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:160px; }
-  .video-screen-overlay { position:absolute; inset:0; background:linear-gradient(to top,rgba(0,0,0,0.9) 0%,rgba(0,0,0,0.2) 60%,transparent 100%); }
-  .video-screen-content { position:absolute; bottom:0; left:0; right:0; padding:24px; }
-  .video-screen-title { font-family:'Syne',sans-serif; font-size:28px; font-weight:800; color:#fff; margin-bottom:6px; }
-  .video-screen-tagline { font-size:14px; color:rgba(255,255,255,0.7); margin-bottom:16px; }
-  .video-timer { display:flex; align-items:center; gap:8px; margin-bottom:12px; }
-  .video-time-label { font-size:12px; color:rgba(255,255,255,0.6); min-width:32px; }
-  .video-progress-bg { flex:1; height:3px; background:rgba(255,255,255,0.2); border-radius:3px; overflow:hidden; }
-  .video-progress-fill { height:100%; background:var(--gold); border-radius:3px; transition:width 0.1s linear; }
-  .video-controls { display:flex; gap:10px; }
-  .video-ctrl-btn { flex:1; padding:10px; border-radius:14px; border:none; font-size:14px; font-weight:600; cursor:pointer; font-family:'DM Sans',sans-serif; transition:all 0.2s; }
-  .video-play-btn { background:var(--gold); color:#000; }
-  .video-play-btn:hover { background:var(--gold-light); }
-  .video-detail-btn { background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.2); color:#fff; }
-  .video-detail-btn:hover { background:rgba(255,255,255,0.25); }
-  .video-captions { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; padding:0 20px; pointer-events:none; }
-  .video-caption { font-size:18px; font-weight:600; color:#fff; text-shadow:0 2px 16px rgba(0,0,0,0.8); line-height:1.4; opacity:0; transition:opacity 0.5s; }
-  .video-caption.visible { opacity:1; }
-  .play-pause-overlay { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:60px; height:60px; border-radius:50%; background:rgba(255,255,255,0.2); display:flex; align-items:center; justify-content:center; font-size:24px; cursor:pointer; transition:all 0.2s; border:2px solid rgba(255,255,255,0.3); }
-  .play-pause-overlay:hover { background:rgba(255,255,255,0.3); }
-
-  /* SIDE PANEL */
-  .side-panel { flex:1; min-width:0; }
-  .side-header { font-family:'Syne',sans-serif; font-size:28px; font-weight:800; margin-bottom:8px; line-height:1.1; }
-  .side-sub { color:var(--text2); font-size:15px; line-height:1.6; margin-bottom:24px; }
-  .side-cards { display:flex; flex-direction:column; gap:12px; }
-  .side-card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px; transition:border-color 0.2s; }
-  .side-card:hover { border-color:rgba(245,158,11,0.3); }
-  .side-card-title { font-family:'Syne',sans-serif; font-weight:700; font-size:13px; color:var(--gold); letter-spacing:0.5px; text-transform:uppercase; margin-bottom:10px; }
-  .stats-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-  .stat-label { font-size:11px; color:var(--text3); margin-bottom:2px; }
-  .stat-value { font-size:16px; font-weight:700; color:var(--text); font-family:'Syne',sans-serif; }
-  .scroll-hint { text-align:center; color:var(--text3); font-size:12px; padding:12px 0 4px; animation:bounce 2s infinite; }
-  @keyframes bounce { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-4px);} }
-
-  /* DETAIL PAGE */
-  .detail-page { padding-top:60px; min-height:100vh; background:var(--bg); }
-  .detail-hero { position:relative; height:320px; display:flex; align-items:flex-end; overflow:hidden; }
-  .detail-hero-bg { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:200px; opacity:0.3; }
-  .detail-hero-overlay { position:absolute; inset:0; }
-  .detail-hero-content { position:relative; z-index:2; padding:32px; width:100%; }
-  .detail-back { position:absolute; top:20px; left:20px; z-index:10; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.15); color:#fff; border-radius:20px; padding:6px 14px; cursor:pointer; font-size:13px; font-family:'DM Sans',sans-serif; backdrop-filter:blur(10px); transition:all 0.2s; }
-  .detail-back:hover { background:rgba(0,0,0,0.6); }
-  .detail-play-btn { position:absolute; top:20px; right:20px; z-index:10; background:var(--gold); border:none; color:#000; border-radius:20px; padding:6px 16px; cursor:pointer; font-size:13px; font-family:'DM Sans',sans-serif; font-weight:700; transition:all 0.2s; }
-  .detail-play-btn:hover { background:var(--gold-light); }
-  .detail-tags { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
-  .detail-tag { background:rgba(245,158,11,0.25); color:var(--gold-light); border:1px solid rgba(245,158,11,0.4); padding:4px 12px; border-radius:20px; font-size:12px; font-weight:500; }
-  .detail-name { font-family:'Syne',sans-serif; font-size:40px; font-weight:800; line-height:1; color:#fff; margin-bottom:6px; }
-  .detail-tagline { font-size:16px; color:rgba(255,255,255,0.7); }
-  .detail-body { max-width:900px; margin:0 auto; padding:32px 24px; }
-  .funding-box { background:var(--card); border:1px solid var(--border); border-radius:20px; padding:24px; margin-bottom:24px; }
-  .funding-box-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
-  .funding-raised { font-family:'Syne',sans-serif; font-size:32px; font-weight:800; color:var(--text); }
-  .funding-goal { font-size:14px; color:var(--text2); margin-top:2px; }
-  .funding-badge { background:rgba(16,185,129,0.15); color:#10b981; border:1px solid rgba(16,185,129,0.3); padding:6px 14px; border-radius:20px; font-size:13px; font-weight:600; }
-  .closed-badge { background:rgba(239,68,68,0.15); color:#ef4444; border:1px solid rgba(239,68,68,0.3); padding:6px 14px; border-radius:20px; font-size:13px; font-weight:600; }
-  .funding-bar-big { height:8px; background:var(--bg2); border-radius:8px; overflow:hidden; margin-bottom:12px; }
-  .funding-bar-big-fill { height:100%; border-radius:8px; background:linear-gradient(90deg,var(--gold),var(--gold-light)); }
-  .funding-meta { display:flex; gap:24px; }
-  .funding-meta-label { font-size:11px; color:var(--text3); margin-bottom:2px; }
-  .funding-meta-value { font-size:15px; font-weight:700; color:var(--text); }
-  .invest-big-btn { width:100%; padding:14px; border-radius:14px; border:none; background:var(--gold); color:#000; font-weight:700; font-size:16px; font-family:'DM Sans',sans-serif; cursor:pointer; margin-top:16px; transition:all 0.2s; }
-  .invest-big-btn:hover { background:var(--gold-light); transform:translateY(-1px); }
-  .invest-big-btn:disabled { background:var(--text3); color:var(--bg); cursor:not-allowed; transform:none; }
-  .section { margin-bottom:24px; }
-  .section-title { font-family:'Syne',sans-serif; font-weight:700; font-size:18px; margin-bottom:14px; color:var(--text); display:flex; align-items:center; gap:8px; }
-  .section-title::after { content:''; flex:1; height:1px; background:var(--border); }
-  .section-card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:20px; }
-  .founder-big { display:flex; gap:16px; align-items:flex-start; }
-  .founder-avatar-big { width:60px; height:60px; border-radius:50%; background:var(--gold); display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:800; color:#000; flex-shrink:0; }
-  .founder-big-name { font-family:'Syne',sans-serif; font-size:20px; font-weight:700; margin-bottom:2px; }
-  .founder-big-role { font-size:13px; color:var(--gold); font-weight:500; margin-bottom:10px; }
-  .founder-story { font-size:14px; color:var(--text2); line-height:1.7; }
-  .team-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:12px; }
-  .team-card { background:var(--card2); border:1px solid var(--border); border-radius:14px; padding:16px; text-align:center; }
-  .team-avatar { width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:800; color:#000; margin:0 auto 10px; background:var(--gold); }
-  .team-name { font-weight:600; font-size:14px; margin-bottom:2px; }
-  .team-role { font-size:12px; color:var(--gold); font-weight:500; margin-bottom:4px; }
-  .team-bg-text { font-size:11px; color:var(--text3); line-height:1.4; }
-  .traction-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-  .traction-item { background:var(--card2); border:1px solid var(--border); border-radius:12px; padding:14px; }
-  .traction-value { font-family:'Syne',sans-serif; font-size:22px; font-weight:800; color:var(--green); margin-bottom:2px; }
-  .traction-label { font-size:12px; color:var(--text3); }
-  .financials-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-  .fin-item { background:var(--card2); border:1px solid var(--border); border-radius:12px; padding:14px; }
-  .fin-value { font-family:'Syne',sans-serif; font-size:20px; font-weight:800; color:var(--text); margin-bottom:2px; }
-  .fin-label { font-size:12px; color:var(--text3); }
-
-  /* EXPLORE */
-  .explore-page { padding-top:60px; min-height:100vh; }
-  .explore-inner { max-width:960px; margin:0 auto; padding:32px 24px; }
-  .explore-header { margin-bottom:28px; }
-  .explore-title { font-family:'Syne',sans-serif; font-size:32px; font-weight:800; margin-bottom:6px; }
-  .explore-sub { color:var(--text2); font-size:15px; }
-  .explore-filters { display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; }
-  .filter-btn { padding:6px 14px; border-radius:20px; font-size:12px; font-family:'DM Sans',sans-serif; cursor:pointer; border:1px solid var(--border); background:var(--card); color:var(--text2); transition:all 0.2s; }
-  .filter-btn.active { background:var(--gold); color:#000; border-color:var(--gold); font-weight:600; }
-  .filter-btn:hover:not(.active) { border-color:var(--gold); color:var(--gold); }
-  .explore-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:16px; }
-  .explore-card { background:var(--card); border:1px solid var(--border); border-radius:20px; overflow:hidden; cursor:pointer; transition:all 0.25s; position:relative; }
-  .explore-card:hover { transform:translateY(-3px); border-color:rgba(245,158,11,0.4); box-shadow:0 8px 30px rgba(245,158,11,0.1); }
-  .explore-card-header { height:120px; display:flex; align-items:center; justify-content:center; font-size:60px; position:relative; overflow:hidden; }
-  .explore-card-play { position:absolute; top:8px; left:8px; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.2); color:#fff; border-radius:20px; padding:3px 10px; font-size:11px; backdrop-filter:blur(4px); }
-  .explore-card-body { padding:16px; }
-  .explore-card-tags { display:flex; gap:4px; flex-wrap:wrap; margin-bottom:8px; }
-  .explore-card-tag { background:var(--pill); color:var(--pill-text); padding:2px 8px; border-radius:20px; font-size:10px; font-weight:500; }
-  .explore-card-name { font-family:'Syne',sans-serif; font-weight:700; font-size:17px; margin-bottom:3px; }
-  .explore-card-tagline { font-size:12px; color:var(--text2); margin-bottom:12px; }
-  .explore-card-bar { height:3px; background:var(--bg2); border-radius:4px; overflow:hidden; margin-bottom:8px; }
-  .explore-card-fill { height:100%; border-radius:4px; background:linear-gradient(90deg,var(--gold),var(--gold-light)); }
-  .explore-card-meta { display:flex; justify-content:space-between; align-items:center; }
-  .explore-card-pct { font-size:13px; font-weight:700; color:var(--gold); }
-  .explore-card-ticket { font-size:11px; color:var(--text3); }
-  .explore-liked-badge { position:absolute; top:10px; right:10px; background:rgba(239,68,68,0.2); border:1px solid rgba(239,68,68,0.4); color:#fca5a5; border-radius:20px; padding:3px 8px; font-size:11px; }
-
-  /* APPLY */
-  .apply-page { padding-top:60px; min-height:100vh; }
-  .apply-inner { max-width:600px; margin:0 auto; padding:48px 24px; }
-  .apply-title { font-family:'Syne',sans-serif; font-size:36px; font-weight:800; margin-bottom:8px; }
-  .apply-sub { color:var(--text2); font-size:16px; line-height:1.6; margin-bottom:36px; }
-  .form-group { margin-bottom:20px; }
-  .form-label { font-size:13px; font-weight:600; color:var(--text2); margin-bottom:6px; display:block; }
-  .form-input { width:100%; padding:12px 16px; border-radius:12px; background:var(--card); border:1px solid var(--border); color:var(--text); font-size:14px; font-family:'DM Sans',sans-serif; outline:none; transition:border-color 0.2s; }
-  .form-input:focus { border-color:var(--gold); }
-  .form-input::placeholder { color:var(--text3); }
-  .form-select { width:100%; padding:12px 16px; border-radius:12px; background:var(--card); border:1px solid var(--border); color:var(--text); font-size:14px; font-family:'DM Sans',sans-serif; outline:none; cursor:pointer; }
-  .form-textarea { width:100%; padding:12px 16px; border-radius:12px; background:var(--card); border:1px solid var(--border); color:var(--text); font-size:14px; font-family:'DM Sans',sans-serif; outline:none; resize:vertical; min-height:100px; transition:border-color 0.2s; }
-  .form-textarea:focus { border-color:var(--gold); }
-  .submit-btn { width:100%; padding:14px; border-radius:14px; border:none; background:var(--gold); color:#000; font-weight:700; font-size:16px; font-family:'DM Sans',sans-serif; cursor:pointer; transition:all 0.2s; }
-  .submit-btn:hover { background:var(--gold-light); transform:translateY(-1px); }
-  .apply-steps { display:flex; gap:12px; margin-bottom:36px; }
-  .apply-step { flex:1; background:var(--card); border:1px solid var(--border); border-radius:14px; padding:14px; text-align:center; }
-  .apply-step-num { width:28px; height:28px; border-radius:50%; background:var(--gold); color:#000; font-weight:800; font-size:13px; display:flex; align-items:center; justify-content:center; margin:0 auto 8px; }
-  .apply-step-text { font-size:12px; color:var(--text2); line-height:1.4; }
-  .success-state { text-align:center; padding:40px 0; }
-  .success-icon { font-size:60px; margin-bottom:16px; }
-  .success-title { font-family:'Syne',sans-serif; font-size:28px; font-weight:800; margin-bottom:8px; }
-  .success-sub { color:var(--text2); font-size:15px; line-height:1.6; }
-
-  /* ADMIN */
-  .admin-page { padding-top:60px; min-height:100vh; background:var(--bg); }
-  .admin-login { max-width:420px; margin:0 auto; padding:80px 24px; text-align:center; }
-  .admin-lock { font-size:48px; margin-bottom:16px; }
-  .admin-login-title { font-family:'Syne',sans-serif; font-size:28px; font-weight:800; margin-bottom:6px; }
-  .admin-login-sub { color:var(--text2); font-size:14px; margin-bottom:28px; }
-  .admin-inner { max-width:1000px; margin:0 auto; padding:32px 24px; }
-  .admin-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:28px; }
-  .admin-title { font-family:'Syne',sans-serif; font-size:28px; font-weight:800; }
-  .admin-sub { color:var(--text2); font-size:14px; margin-top:4px; }
-  .admin-tabs { display:flex; gap:8px; margin-bottom:24px; }
-  .admin-tab-btn { padding:8px 18px; border-radius:20px; font-size:13px; font-family:'DM Sans',sans-serif; cursor:pointer; border:1px solid var(--border); background:var(--card); color:var(--text2); transition:all 0.2s; }
-  .admin-tab-btn.active { background:var(--gold); color:#000; border-color:var(--gold); font-weight:600; }
-  .admin-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:24px; }
-  .admin-stat { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px; }
-  .admin-stat-value { font-family:'Syne',sans-serif; font-size:24px; font-weight:800; margin-bottom:2px; }
-  .admin-stat-label { font-size:12px; color:var(--text3); }
-  .application-card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:20px; margin-bottom:12px; }
-  .app-card-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px; }
-  .app-card-name { font-family:'Syne',sans-serif; font-size:18px; font-weight:700; margin-bottom:2px; }
-  .app-card-founder { font-size:13px; color:var(--text2); }
-  .app-status { padding:4px 12px; border-radius:20px; font-size:12px; font-weight:600; }
-  .status-pending { background:rgba(245,158,11,0.15); color:var(--gold); border:1px solid rgba(245,158,11,0.3); }
-  .status-approved { background:rgba(16,185,129,0.15); color:#10b981; border:1px solid rgba(16,185,129,0.3); }
-  .status-rejected { background:rgba(239,68,68,0.15); color:#ef4444; border:1px solid rgba(239,68,68,0.3); }
-  .app-card-details { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-bottom:14px; }
-  .app-detail-label { font-size:11px; color:var(--text3); margin-bottom:2px; }
-  .app-detail-value { font-size:14px; font-weight:600; color:var(--text); }
-  .app-traction { font-size:13px; color:var(--text2); line-height:1.5; background:var(--bg2); border-radius:10px; padding:10px 12px; margin-bottom:14px; }
-  .app-actions { display:flex; gap:8px; }
-  .app-approve-btn { flex:1; padding:8px; border-radius:10px; border:none; background:rgba(16,185,129,0.15); color:#10b981; font-weight:600; font-size:13px; font-family:'DM Sans',sans-serif; cursor:pointer; border:1px solid rgba(16,185,129,0.3); transition:all 0.2s; }
-  .app-approve-btn:hover { background:rgba(16,185,129,0.25); }
-  .app-reject-btn { flex:1; padding:8px; border-radius:10px; border:none; background:rgba(239,68,68,0.1); color:#ef4444; font-weight:600; font-size:13px; font-family:'DM Sans',sans-serif; cursor:pointer; border:1px solid rgba(239,68,68,0.3); transition:all 0.2s; }
-  .app-reject-btn:hover { background:rgba(239,68,68,0.2); }
-  .app-view-btn { padding:8px 18px; border-radius:10px; border:1px solid var(--border); background:transparent; color:var(--text2); font-size:13px; font-family:'DM Sans',sans-serif; cursor:pointer; transition:all 0.2s; }
-  .app-view-btn:hover { border-color:var(--gold); color:var(--gold); }
-  .live-startup-card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:20px; margin-bottom:12px; display:flex; align-items:center; gap:16px; }
-  .live-startup-emoji { font-size:36px; }
-  .live-startup-info { flex:1; }
-  .live-startup-name { font-family:'Syne',sans-serif; font-size:16px; font-weight:700; margin-bottom:2px; }
-  .live-startup-meta { font-size:12px; color:var(--text3); }
-  .live-startup-bar { flex:1; }
-  .live-bar-row { display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px; }
-  .live-bar-pct { color:var(--gold); font-weight:700; }
-  .live-bar-amount { color:var(--text3); }
-  .live-bar-bg { height:6px; background:var(--bg2); border-radius:6px; overflow:hidden; }
-  .live-bar-fill { height:100%; border-radius:6px; background:linear-gradient(90deg,var(--gold),var(--gold-light)); }
-  .admin-action-btn { padding:7px 16px; border-radius:10px; border:1px solid var(--border); background:transparent; color:var(--text2); font-size:12px; font-family:'DM Sans',sans-serif; cursor:pointer; transition:all 0.2s; }
-  .admin-action-btn:hover { border-color:var(--red); color:var(--red); }
-  .logout-btn { padding:6px 14px; border-radius:20px; border:1px solid var(--border); background:transparent; color:var(--text2); font-size:13px; font-family:'DM Sans',sans-serif; cursor:pointer; }
-`;
+// ─── DATA ─────────────────────────────────────────────────────────────────────
+const SECTORS = ["All","EdTech","FinTech","HealthTech","AgriTech","CleanTech","D2C","SaaS","FoodTech"];
 
 const STARTUPS = [
   {
-    id: 1, name: "GreenHarvest", tagline: "Farm-to-table in 2 hours",
-    sector: ["AgriTech", "D2C", "Sustainability"],
-    founderName: "Priya Sharma", founderInitials: "PS", founderTitle: "CEO & Co-founder",
-    founderStory: "Ex-IIT Bombay grad with 8 years in supply chain. Lost my grandmother's farm to exploitative middlemen. I'm building what should have existed 20 years ago — direct, transparent, and fast.",
-    team: [{ name:"Priya Sharma",role:"CEO",bg:"IIT Bombay, ex-Maersk",initials:"PS"},{ name:"Rahul Nair",role:"CTO",bg:"BITS Pilani, ex-Swiggy",initials:"RN"},{ name:"Anita Joshi",role:"COO",bg:"IIM-A, ex-BigBasket",initials:"AJ"}],
-    fundingGoal:5000000, raised:3200000, ticketSize:10000, totalTickets:500, ticketsSold:320,
-    traction:[{value:"₹42L",label:"Monthly Revenue"},{value:"23%",label:"MoM Growth"},{value:"12,000",label:"Active Users"},{value:"3",label:"Cities Live"}],
-    financials:[{value:"₹5Cr",label:"Current ARR"},{value:"₹50Cr",label:"Target ARR (2026)"},{value:"34%",label:"Gross Margin"},{value:"₹8L",label:"Monthly Burn"}],
-    emoji:"🌾", gradient:"linear-gradient(160deg,#064e3b 0%,#065f46 50%,#0f4c2a 100%)",
-    pitchScript:["We're GreenHarvest — fresh produce directly from Indian farmers to your doorstep...","...in under 2 hours. No middlemen. No cold storage losses.","We've hit ₹42L monthly revenue with 12,000 happy customers across 3 cities.","Join us. ₹10,000 minimum. Be part of India's food revolution."]
+    id:1, name:"Growfast", tagline:"AI-powered micro-loans for kirana stores",
+    sector:"FinTech", city:"Mumbai",
+    raised:1240000, target:2000000, tickets:248, totalTickets:400, ticketPrice:5000, backers:248,
+    trendingScore:95, raisedLast24h:125000,
+    founderName:"Priya Sharma", founderRole:"CEO & Co-founder",
+    founderBio:"Ex-Razorpay, IIT Bombay. Building credit infrastructure for India's 12M kirana stores.",
+    pitch:"Kirana stores run India's ₹45L crore retail economy. Yet they can't get credit. Growfast uses AI + GST data to underwrite micro-loans in 4 hours — no collateral, no branch visits.",
+    highlights:["3,200 active borrowers","₹2.1Cr disbursed","0.8% NPA","MoM growth: 47%"],
+    topInvestorQuote:"I backed Growfast because the TAM is enormous and the team actually understands credit risk.",
+    topInvestorName:"Arjun V.", color:"#FF6B35", emoji:"🏪",
   },
   {
-    id: 2, name: "NeuroLearn", tagline: "AI tutors for every Indian child",
-    sector: ["EdTech", "AI", "B2C"],
-    founderName: "Arjun Mehta", founderInitials: "AM", founderTitle: "Founder & CEO",
-    founderStory: "Former IIT Delhi professor frustrated with how 600M children in India lack access to quality education. NeuroLearn uses voice AI to teach in any of 22 Indian languages.",
-    team: [{ name:"Arjun Mehta",role:"CEO",bg:"IIT Delhi (PhD), ex-Google AI",initials:"AM"},{ name:"Sneha Rao",role:"CTO",bg:"Stanford MS, ex-OpenAI",initials:"SR"},{ name:"Dev Kapoor",role:"Growth",bg:"ISB, ex-BYJU's",initials:"DK"}],
-    fundingGoal:10000000, raised:8500000, ticketSize:5000, totalTickets:2000, ticketsSold:1700,
-    traction:[{value:"4.2L",label:"Registered Students"},{value:"68%",label:"30-day Retention"},{value:"22",label:"Languages Supported"},{value:"₹28L",label:"Monthly Revenue"}],
-    financials:[{value:"₹3.4Cr",label:"Current ARR"},{value:"₹40Cr",label:"Target ARR (2026)"},{value:"78%",label:"Gross Margin"},{value:"₹12L",label:"Monthly Burn"}],
-    emoji:"🧠", gradient:"linear-gradient(160deg,#1e1b4b 0%,#312e81 50%,#3730a3 100%)",
-    pitchScript:["Imagine a world where every Indian child has a personal AI tutor...","...that speaks their language. All 22 official Indian languages.","4.2 lakh students. 68% monthly retention. Growing 23% month on month.","Back us. Change the future of 600 million kids."]
+    id:2, name:"NeuroLearn", tagline:"Vernacular AI tutors for rural students",
+    sector:"EdTech", city:"Bengaluru",
+    raised:850000, target:1500000, tickets:170, totalTickets:300, ticketPrice:5000, backers:170,
+    trendingScore:88, raisedLast24h:90000,
+    founderName:"Ravi Menon", founderRole:"Founder",
+    founderBio:"Former teacher, IIM Ahmedabad. On a mission to democratize quality education.",
+    pitch:"70% of India's students learn in regional languages. Yet all EdTech is in English. NeuroLearn builds AI tutors in 12 Indian languages — affordable, offline-capable, curriculum-aligned.",
+    highlights:["18,000 students","12 languages","82% completion rate","₹199/month"],
+    topInvestorQuote:"The retention numbers are unlike anything I've seen in EdTech. This team has cracked engagement.",
+    topInvestorName:"Sneha R.", color:"#4ECDC4", emoji:"📚",
   },
   {
-    id: 3, name: "MediRural", tagline: "Diagnostics in 30 minutes, anywhere",
-    sector: ["HealthTech", "Rural", "B2B"],
-    founderName: "Dr. Kavya Reddy", founderInitials: "KR", founderTitle: "CEO & Co-founder",
-    founderStory: "AIIMS Delhi doctor who did rural postings and saw people die waiting for basic diagnostics. MediRural deploys portable AI diagnostics labs in tier-3 cities and villages.",
-    team: [{ name:"Dr. Kavya Reddy",role:"CEO",bg:"AIIMS Delhi, ex-WHO Fellow",initials:"KR"},{ name:"Vikram Singh",role:"CTO",bg:"IIT Madras, ex-Siemens",initials:"VS"},{ name:"Pooja Iyer",role:"Ops",bg:"IIM-B, ex-Apollo",initials:"PI"}],
-    fundingGoal:20000000, raised:5000000, ticketSize:10000, totalTickets:2000, ticketsSold:500,
-    traction:[{value:"180",label:"Clinics Deployed"},{value:"2.1L",label:"Tests Conducted"},{value:"94%",label:"Accuracy vs Lab"},{value:"₹18L",label:"Monthly Revenue"}],
-    financials:[{value:"₹2.1Cr",label:"Current ARR"},{value:"₹80Cr",label:"Target ARR (2027)"},{value:"61%",label:"Gross Margin"},{value:"₹20L",label:"Monthly Burn"}],
-    emoji:"🏥", gradient:"linear-gradient(160deg,#7f1d1d 0%,#991b1b 50%,#b91c1c 100%)",
-    pitchScript:["800 million Indians live more than 30km from a diagnostic lab.","We're changing that. MediRural deploys portable AI diagnostics — 30-minute results, village level.","180 clinics. 2.1 lakh tests done. 94% accuracy.","Invest from ₹10,000. Save a life in rural India."]
+    id:3, name:"FarmLink", tagline:"B2B marketplace connecting farmers to restaurants",
+    sector:"AgriTech", city:"Pune",
+    raised:620000, target:1000000, tickets:124, totalTickets:200, ticketPrice:5000, backers:124,
+    trendingScore:72, raisedLast24h:55000,
+    founderName:"Anita Desai", founderRole:"CEO",
+    founderBio:"5th generation farmer turned tech founder. BITS Pilani CS graduate.",
+    pitch:"Restaurants pay 3x the farm price. Farmers earn 1/3rd of retail. FarmLink cuts 4 middlemen with direct farm-to-table logistics in 36 hours across 200 cities.",
+    highlights:["200 partner farms","850 restaurants","₹4.2Cr GMV","28% YoY growth"],
+    topInvestorQuote:"FarmLink solves a problem I see every day — and their unit economics are already positive.",
+    topInvestorName:"Vikram P.", color:"#95D5B2", emoji:"🌾",
   },
   {
-    id: 4, name: "CarbonZero", tagline: "Carbon credits for every Indian business",
-    sector: ["CleanTech", "B2B", "SaaS"],
-    founderName: "Nikhil Gupta", founderInitials: "NG", founderTitle: "Co-founder & CEO",
-    founderStory: "Ex-McKinsey sustainability consultant who realized India's SMEs have no way to participate in global carbon markets. CarbonZero makes it plug-and-play.",
-    team: [{ name:"Nikhil Gupta",role:"CEO",bg:"IIM-C, ex-McKinsey",initials:"NG"},{ name:"Tanvi Shah",role:"CTO",bg:"IIIT Hyderabad, ex-Ola",initials:"TS"},{ name:"Rohan Das",role:"BD",bg:"LSE, ex-Deloitte",initials:"RD"}],
-    fundingGoal:15000000, raised:15000000, ticketSize:10000, totalTickets:1500, ticketsSold:1500,
-    traction:[{value:"340",label:"SMEs Onboarded"},{value:"₹62L",label:"Monthly Revenue"},{value:"4.2K",label:"Credits Issued"},{value:"48%",label:"MoM Growth"}],
-    financials:[{value:"₹7.4Cr",label:"Current ARR"},{value:"₹100Cr",label:"Target ARR (2026)"},{value:"82%",label:"Gross Margin"},{value:"₹15L",label:"Monthly Burn"}],
-    emoji:"🌿", gradient:"linear-gradient(160deg,#052e16 0%,#14532d 50%,#166534 100%)",
-    pitchScript:["India's carbon market is worth $50 billion. SMEs are locked out.","CarbonZero is the Stripe for carbon credits — plug in, earn, sell.","340 businesses. ₹62L monthly revenue. Round fully subscribed.","This round is CLOSED. Watch for our Series A."]
+    id:4, name:"MediScan", tagline:"AI diagnostics for tier-2 clinics",
+    sector:"HealthTech", city:"Hyderabad",
+    raised:1800000, target:2000000, tickets:360, totalTickets:400, ticketPrice:5000, backers:360,
+    trendingScore:99, raisedLast24h:200000,
+    founderName:"Dr. Karthik Nair", founderRole:"Founder & CTO",
+    founderBio:"Radiologist + ML researcher. AIIMS Delhi. 14 published papers on diagnostic AI.",
+    pitch:"India has 1 radiologist per 100,000 people. MediScan's AI reads X-rays and MRIs with 94% accuracy — making quality diagnostics affordable in every town.",
+    highlights:["94% diagnostic accuracy","1,200 clinics","₹8Cr revenue","CDSCO approved"],
+    topInvestorQuote:"The accuracy numbers are validated by independent hospitals. This is the real deal.",
+    topInvestorName:"Dr. Priya M.", color:"#FFB5A7", emoji:"🏥",
   },
   {
-    id: 5, name: "PayKaro", tagline: "UPI for the unbanked — voice-first payments",
-    sector: ["FinTech", "Bharat", "B2C"],
-    founderName: "Deepak Tiwari", founderInitials: "DT", founderTitle: "Founder & CEO",
-    founderStory: "Ex-NPCI engineer who spent years building UPI infrastructure. 400M Indians still can't use it — they can't read. PayKaro lets you send money by just speaking in Hindi or any regional language.",
-    team: [{ name:"Deepak Tiwari",role:"CEO",bg:"IIIT Allahabad, ex-NPCI",initials:"DT"},{ name:"Meera Pillai",role:"CTO",bg:"NIT Trichy, ex-PhonePe",initials:"MP"},{ name:"Sanjay Yadav",role:"Growth",bg:"FMS Delhi, ex-Paytm",initials:"SY"}],
-    fundingGoal:8000000, raised:2400000, ticketSize:5000, totalTickets:1600, ticketsSold:480,
-    traction:[{value:"8.2L",label:"Active Users"},{value:"₹340Cr",label:"Monthly TPV"},{value:"14",label:"Languages Supported"},{value:"₹19L",label:"Monthly Revenue"}],
-    financials:[{value:"₹2.3Cr",label:"Current ARR"},{value:"₹60Cr",label:"Target ARR (2026)"},{value:"71%",label:"Gross Margin"},{value:"₹11L",label:"Monthly Burn"}],
-    emoji:"💸", gradient:"linear-gradient(160deg,#1e3a5f 0%,#1e40af 50%,#1d4ed8 100%)",
-    pitchScript:["400 million Indians are locked out of digital payments. They can't read.","PayKaro lets you send money by just speaking — in Hindi, Tamil, Bengali, 14 languages.","8.2 lakh users. ₹340 crore monthly transactions.","Back the next fintech giant. Minimum ₹5,000."]
+    id:5, name:"SolarKart", tagline:"EMI-based rooftop solar for middle-class homes",
+    sector:"CleanTech", city:"Jaipur",
+    raised:430000, target:1500000, tickets:86, totalTickets:300, ticketPrice:5000, backers:86,
+    trendingScore:61, raisedLast24h:40000,
+    founderName:"Rohit Gupta", founderRole:"CEO",
+    founderBio:"Ex-Tata Power, IIT Delhi. Obsessed with making clean energy accessible.",
+    pitch:"Rooftop solar pays back in 4 years but costs ₹3L upfront. SolarKart bundles installation + financing into ₹2,999/month EMIs — zero down, positive cash flow from day one.",
+    highlights:["2,100 installations","Rajasthan & UP","₹0 subsidy dependent","MNRE empanelled"],
+    topInvestorQuote:"The EMI model cracks a problem that's blocked solar adoption for a decade.",
+    topInvestorName:"Meera K.", color:"#FFD700", emoji:"☀️",
   },
   {
-    id: 6, name: "BoltEV", tagline: "EV charging in 90 seconds — for every city",
-    sector: ["EV", "CleanTech", "Infra"],
-    founderName: "Ranjit Suri", founderInitials: "RS", founderTitle: "CEO & Co-founder",
-    founderStory: "20-year auto industry veteran who saw EV adoption stall because of charging anxiety. BoltEV installs battery-swap stations so charging takes 90 seconds, not 90 minutes.",
-    team: [{ name:"Ranjit Suri",role:"CEO",bg:"IIT Roorkee, ex-Tata Motors",initials:"RS"},{ name:"Anjali Bose",role:"CTO",bg:"IISc, ex-Ather Energy",initials:"AB"},{ name:"Kiran Reddy",role:"COO",bg:"IIM-L, ex-Flipkart",initials:"KR"}],
-    fundingGoal:25000000, raised:9000000, ticketSize:10000, totalTickets:2500, ticketsSold:900,
-    traction:[{value:"420",label:"Swap Stations Live"},{value:"18K",label:"Daily Swaps"},{value:"₹54L",label:"Monthly Revenue"},{value:"38%",label:"MoM Growth"}],
-    financials:[{value:"₹6.5Cr",label:"Current ARR"},{value:"₹200Cr",label:"Target ARR (2027)"},{value:"58%",label:"Gross Margin"},{value:"₹35L",label:"Monthly Burn"}],
-    emoji:"⚡", gradient:"linear-gradient(160deg,#1c1917 0%,#292524 50%,#44403c 100%)",
-    pitchScript:["EV adoption is stuck. Charging takes 90 minutes. Nobody wants that.","BoltEV solves it with battery-swap stations — 90 seconds and you're gone.","420 stations. 18,000 daily swaps. Growing 38% every month.","Invest in India's EV future. ₹10,000 minimum."]
+    id:6, name:"WardrobeOS", tagline:"AI stylist subscription for working women",
+    sector:"D2C", city:"Delhi",
+    raised:980000, target:1500000, tickets:196, totalTickets:300, ticketPrice:5000, backers:196,
+    trendingScore:85, raisedLast24h:80000,
+    founderName:"Kavya Iyer", founderRole:"Founder",
+    founderBio:"Ex-Myntra buyer, fashion designer. Solving the 'nothing to wear' problem with data.",
+    pitch:"Working women spend 45 min/day deciding what to wear. WardrobeOS digitizes your closet and uses AI to build daily outfits for every occasion — and fills gaps with curated drops.",
+    highlights:["28,000 subscribers","₹799/month","NPS 72","40% refer a friend"],
+    topInvestorQuote:"The NPS of 72 is higher than Spotify's. Retention is the whole game, and they've solved it.",
+    topInvestorName:"Aisha B.", color:"#C77DFF", emoji:"👗",
   },
   {
-    id: 7, name: "SheLeads", tagline: "Microloans for 100M women entrepreneurs",
-    sector: ["FinTech", "Women", "Impact"],
-    founderName: "Fatima Khan", founderInitials: "FK", founderTitle: "Founder & CEO",
-    founderStory: "Microfinance veteran with 12 years on the ground in Bihar and UP. 100M women run informal businesses in India with zero access to credit. SheLeads gives them digital microloans in 4 hours.",
-    team: [{ name:"Fatima Khan",role:"CEO",bg:"XLRI, ex-Grameen Bank",initials:"FK"},{ name:"Rohit Mishra",role:"CTO",bg:"IIT BHU, ex-CRED",initials:"RM"},{ name:"Preethi Kumar",role:"Risk",bg:"IIM-K, ex-HDFC",initials:"PK"}],
-    fundingGoal:12000000, raised:7200000, ticketSize:5000, totalTickets:2400, ticketsSold:1440,
-    traction:[{value:"1.2L",label:"Women Borrowers"},{value:"0.8%",label:"Default Rate"},{value:"₹48L",label:"Monthly Revenue"},{value:"₹940Cr",label:"Loans Disbursed"}],
-    financials:[{value:"₹5.8Cr",label:"Current ARR"},{value:"₹75Cr",label:"Target ARR (2026)"},{value:"68%",label:"Gross Margin"},{value:"₹14L",label:"Monthly Burn"}],
-    emoji:"💪", gradient:"linear-gradient(160deg,#4c0519 0%,#881337 50%,#9f1239 100%)",
-    pitchScript:["1.2 lakh women. All running businesses. All denied credit by banks.","SheLeads gives them microloans in 4 hours. Digitally. No collateral.","₹940 crore disbursed. 0.8% default rate. We know what we're doing.","Invest from ₹5,000 and back India's most powerful untapped economy."]
+    id:7, name:"CloudKitchen Pro", tagline:"SaaS stack for ghost kitchen operators",
+    sector:"SaaS", city:"Chennai",
+    raised:340000, target:1000000, tickets:68, totalTickets:200, ticketPrice:5000, backers:68,
+    trendingScore:58, raisedLast24h:30000,
+    founderName:"Samuel Joseph", founderRole:"CEO",
+    founderBio:"Ex-Swiggy operations. Built 12 ghost kitchens before building software for them.",
+    pitch:"India's ghost kitchen market is ₹9,000Cr and growing 60% YoY. Yet operators juggle 6 apps for orders, inventory, staff, and accounts. CloudKitchen Pro consolidates everything in one dashboard.",
+    highlights:["420 kitchen clients","₹1.2Cr ARR","130% NRR","3 hrs saved/day avg"],
+    topInvestorQuote:"130% net revenue retention means the product sells itself. That's rare at this stage.",
+    topInvestorName:"Nathan S.", color:"#F4A261", emoji:"🍳",
   },
   {
-    id: 8, name: "SpaceFarm", tagline: "Vertical farms inside shipping containers",
-    sector: ["AgriTech", "FoodTech", "Sustainability"],
-    founderName: "Arun Krishnan", founderInitials: "AK", founderTitle: "Co-founder & CEO",
-    founderStory: "NASA researcher-turned-entrepreneur. We grow 3x more food in 10x less space using AI-controlled vertical farms that fit inside shipping containers. Deploying across Indian Tier-2 cities.",
-    team: [{ name:"Arun Krishnan",role:"CEO",bg:"IISc + NASA Fellowship",initials:"AK"},{ name:"Divya Menon",role:"CTO",bg:"BITS + ex-Infosys AI",initials:"DM"},{ name:"Siddharth Roy",role:"CFO",bg:"IIM-A, ex-Goldman",initials:"SR"}],
-    fundingGoal:18000000, raised:3600000, ticketSize:10000, totalTickets:1800, ticketsSold:360,
-    traction:[{value:"24",label:"Containers Deployed"},{value:"3.2T",label:"Produce/Month"},{value:"₹22L",label:"Monthly Revenue"},{value:"8",label:"Restaurant Chains"}],
-    financials:[{value:"₹2.6Cr",label:"Current ARR"},{value:"₹120Cr",label:"Target ARR (2027)"},{value:"52%",label:"Gross Margin"},{value:"₹28L",label:"Monthly Burn"}],
-    emoji:"🚀", gradient:"linear-gradient(160deg,#0f172a 0%,#1e293b 50%,#0f4c75 100%)",
-    pitchScript:["What if we could grow fresh food anywhere — with no soil, no seasons, no land?","SpaceFarm uses NASA-derived tech inside shipping containers.","24 farms live. 3.2 tonnes of produce monthly. 8 restaurant chains as customers.","Join us from ₹10,000 and be part of the future of food."]
+    id:8, name:"BiteBuddy", tagline:"Personalized nutrition for diabetic patients",
+    sector:"HealthTech", city:"Bengaluru",
+    raised:560000, target:1000000, tickets:112, totalTickets:200, ticketPrice:5000, backers:112,
+    trendingScore:78, raisedLast24h:65000,
+    founderName:"Dr. Meena Pillai", founderRole:"Founder & CEO",
+    founderBio:"Diabetologist with 12 years clinical practice. Treated 4,000+ patients before going full-time.",
+    pitch:"India has 101M diabetics — the world's largest. 82% don't follow diet plans because they're too generic. BiteBuddy uses CGM data + Indian food database to build meal plans that actually fit real life.",
+    highlights:["12,000 patients","31% avg HbA1c improvement","3 insurance partnerships","₹499/month"],
+    topInvestorQuote:"Real clinical outcomes from a doctor-founder. I've seen nothing like the HbA1c data.",
+    topInvestorName:"Rahul D.", color:"#E76F51", emoji:"🥗",
   },
 ];
 
-const INITIAL_APPLICATIONS = [
-  { id:101, company:"HealthSync AI", founder:"Dr. Aditya Patel", email:"aditya@healthsync.in", sector:"HealthTech", raise:"₹1,50,00,000", traction:"12,000 doctors onboarded. ₹8L MRR. Piloting with Apollo and Manipal hospitals. Looking to expand to 50 cities.", status:"pending", date:"24 Feb 2026" },
-  { id:102, company:"WasteWise", founder:"Neha Sharma", email:"neha@wastewise.in", sector:"CleanTech", raise:"₹75,00,000", traction:"Pre-revenue. Have LOIs from 3 Tier-2 municipal corporations. Pilot starting March.", status:"pending", date:"23 Feb 2026" },
-  { id:103, company:"LogiBot", founder:"Saurabh Mishra", email:"saurabh@logibot.in", sector:"Logistics", raise:"₹2,00,00,000", traction:"₹18L MRR. Serving 40 D2C brands. 99.2% on-time delivery rate. Looking to build proprietary fleet.", status:"pending", date:"22 Feb 2026" },
-  { id:104, company:"TutorMitra", founder:"Riya Kapoor", email:"riya@tutormitra.in", sector:"EdTech", raise:"₹50,00,000", traction:"Just launched. 800 sign-ups in first week from organic. First-time founder.", status:"rejected", date:"20 Feb 2026" },
-  { id:105, company:"ColdChainX", founder:"Aman Verma", email:"aman@coldchainx.in", sector:"AgriTech", raise:"₹3,00,00,000", traction:"₹32L MRR. 180 farmers. 24 cold storage hubs. Partnered with Mother Dairy.", status:"approved", date:"18 Feb 2026" },
+const PENDING_APPLICATIONS = [
+  {
+    id:101, name:"QuickHire", tagline:"Blue-collar hiring for factories",
+    sector:"SaaS", city:"Surat", founderName:"Suresh Patel", appliedDate:"2026-03-08",
+    pitch:"Factories waste 2 weeks per hire for floor workers. QuickHire matches pre-screened blue-collar workers in 48 hours using skill tests and geo-matching.",
+  },
+  {
+    id:102, name:"AyurBot", tagline:"AI-driven Ayurveda consultation app",
+    sector:"HealthTech", city:"Coimbatore", founderName:"Dr. Lakshmi Rao", appliedDate:"2026-03-09",
+    pitch:"70M Indians use Ayurveda but 90% can't access qualified practitioners. AyurBot provides personalized dosha analysis and treatment plans via WhatsApp.",
+  },
+  {
+    id:103, name:"EduPass", tagline:"Subscription access to 50+ skill courses",
+    sector:"EdTech", city:"Kolkata", founderName:"Arnab Sen", appliedDate:"2026-03-10",
+    pitch:"Skills gap is costing Indian youth jobs. EduPass offers Netflix-style access to 50+ job-ready courses for ₹199/month — with placement support included.",
+  },
 ];
 
-function formatCurrency(amount) {
-  if (amount >= 10000000) return `₹${(amount/10000000).toFixed(1)}Cr`;
-  if (amount >= 100000) return `₹${(amount/100000).toFixed(1)}L`;
-  return `₹${amount.toLocaleString('en-IN')}`;
-}
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+const fmt = (n) => {
+  if (n >= 10000000) return `₹${(n/10000000).toFixed(1)}Cr`;
+  if (n >= 100000)   return `₹${(n/100000).toFixed(1)}L`;
+  if (n >= 1000)     return `₹${(n/1000).toFixed(0)}K`;
+  return `₹${n}`;
+};
+const pct = (a,b) => Math.min(100, Math.round((a/b)*100));
 
-// ── VIDEO PLAYER MODAL ──────────────────────────────────────────────
-function VideoPlayerModal({ startup, onClose, onDetail }) {
-  const [playing, setPlaying] = useState(false);
-  const [elapsed, setElapsed] = useState(0);
-  const [captionIdx, setCaptionIdx] = useState(0);
-  const DURATION = 45;
-  const intervalRef = useRef(null);
+// ─── MAIN ─────────────────────────────────────────────────────────────────────
+export default function App() {
+  const [dark, setDark]             = useState(true);
+  const [tab, setTab]               = useState("home");
+  const [detail, setDetail]         = useState(null);
+  const [video, setVideo]           = useState(null);
+  const [videoProgress, setVideoProgress] = useState(0);
+  const [videoPlaying, setVideoPlaying]   = useState(false);
+  const [investments, setInvestments]     = useState({});
+  const [investAnim, setInvestAnim]       = useState(null);
+  const [sectorFilter, setSectorFilter]   = useState("All");
+  const [pullRefreshing, setPullRefreshing] = useState(false);
+  const [feedIdx, setFeedIdx]       = useState(0);
+  const [showAdmin, setShowAdmin]   = useState(false);
+  const [adminPass, setAdminPass]   = useState("");
+  const [adminAuthed, setAdminAuthed] = useState(false);
+  const [adminSort, setAdminSort]   = useState("pending-first");
+  const [applications, setApplications] = useState(PENDING_APPLICATIONS);
+  const [liveStartups, setLiveStartups] = useState(STARTUPS);
+  const [rejectTarget, setRejectTarget] = useState(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [investConfirm, setInvestConfirm] = useState(null);
+
+  const videoTimer  = useRef(null);
+  const touchStart  = useRef(null);
+
+  // ── THEME ──────────────────────────────────────────────────────────────────
+  const t = {
+    bg:       dark ? "#080810" : "#F5F4F0",
+    card:     dark ? "#12121C" : "#FFFFFF",
+    border:   dark ? "#252535" : "#E5E3DC",
+    text:     dark ? "#EEEDF4" : "#1A1A2E",
+    sub:      dark ? "#7777AA" : "#6B6B7B",
+    accent:   "#FF6B35",
+    green:    "#22C55E",
+    input:    dark ? "#1C1C2C" : "#EEECE5",
+    nav:      dark ? "#0C0C18" : "#FFFFFF",
+    overlay:  dark ? "rgba(0,0,0,0.85)" : "rgba(0,0,0,0.6)",
+  };
+
+  // ── VIDEO ──────────────────────────────────────────────────────────────────
+  const openVideo = (s) => { setVideo(s); setVideoProgress(0); setVideoPlaying(true); };
+  const closeVideo = () => {
+    setVideo(null); setVideoProgress(0); setVideoPlaying(false);
+    clearInterval(videoTimer.current);
+  };
 
   useEffect(() => {
-    if (playing) {
-      intervalRef.current = setInterval(() => {
-        setElapsed(e => {
-          const next = e + 0.1;
-          if (next >= DURATION) { setPlaying(false); clearInterval(intervalRef.current); return DURATION; }
-          return next;
+    if (video && videoPlaying) {
+      videoTimer.current = setInterval(() => {
+        setVideoProgress(p => {
+          if (p >= 100) { clearInterval(videoTimer.current); setVideoPlaying(false); return 100; }
+          return p + (100/45)*0.1;
         });
       }, 100);
-    } else {
-      clearInterval(intervalRef.current);
     }
-    return () => clearInterval(intervalRef.current);
-  }, [playing]);
+    return () => clearInterval(videoTimer.current);
+  }, [video, videoPlaying]);
 
-  useEffect(() => {
-    const idx = Math.min(Math.floor((elapsed / DURATION) * startup.pitchScript.length), startup.pitchScript.length - 1);
-    setCaptionIdx(idx);
-  }, [elapsed, startup.pitchScript.length]);
+  // ── SWIPE ──────────────────────────────────────────────────────────────────
+  const onTouchStart = (e) => { touchStart.current = e.touches[0].clientY; };
+  const onTouchEnd = (e) => {
+    if (!touchStart.current) return;
+    const delta = touchStart.current - e.changedTouches[0].clientY;
+    if (Math.abs(delta) < 60) return;
+    const arr = filtered();
+    if (delta > 0) setFeedIdx(i => Math.min(i+1, arr.length-1));
+    else           setFeedIdx(i => Math.max(i-1, 0));
+    touchStart.current = null;
+  };
 
-  const pct = (elapsed / DURATION) * 100;
-  const timeLeft = Math.max(0, Math.ceil(DURATION - elapsed));
+  // ── PULL REFRESH ──────────────────────────────────────────────────────────
+  const pullRefresh = () => {
+    setPullRefreshing(true);
+    setTimeout(() => setPullRefreshing(false), 1600);
+  };
 
-  function reset() { setElapsed(0); setPlaying(false); setCaptionIdx(0); }
+  // ── INVEST ────────────────────────────────────────────────────────────────
+  const doInvest = (s) => {
+    if (investments[s.id]) return;
+    setInvestAnim(s.id);
+    setTimeout(() => setInvestAnim(null), 700);
+    setInvestments(p => ({...p, [s.id]: 1}));
+    setLiveStartups(p => p.map(x => x.id===s.id
+      ? {...x, raised: x.raised+x.ticketPrice, tickets: x.tickets+1, backers: x.backers+1}
+      : x
+    ));
+    setInvestConfirm(null);
+  };
 
-  return (
-    <div className="video-modal" onClick={onClose}>
-      <div className="video-player-wrap" onClick={e => e.stopPropagation()}>
-        <button className="video-close" onClick={onClose}>✕ Close</button>
-        <div className="video-screen">
-          <div className="video-screen-bg" style={{ background: startup.gradient }}>{startup.emoji}</div>
-          <div className="video-screen-overlay" />
+  // ── FILTER / SORT ─────────────────────────────────────────────────────────
+  const filtered = () => sectorFilter==="All" ? liveStartups : liveStartups.filter(s => s.sector===sectorFilter);
+  const trending = () => [...liveStartups].sort((a,b)=>b.trendingScore-a.trendingScore).slice(0,3);
+  const similar  = (s) => liveStartups.filter(x => x.sector===s.sector && x.id!==s.id).slice(0,2);
 
-          {/* Captions */}
-          <div className="video-captions">
-            {startup.pitchScript.map((line, i) => (
-              <div key={i} className={`video-caption ${captionIdx === i && playing ? "visible" : ""}`}>
-                {line}
-              </div>
-            ))}
-            {!playing && elapsed === 0 && (
-              <div style={{ color:"rgba(255,255,255,0.6)", fontSize:"14px" }}>Tap play to watch the 45s pitch</div>
-            )}
-            {!playing && elapsed >= DURATION && (
-              <div style={{ color:"#fff", fontSize:"16px", fontWeight:700 }}>Pitch Complete! 🎉</div>
-            )}
-          </div>
+  const sortedApps = () => [...applications].sort((a,b) => {
+    if (adminSort==="newest") return new Date(b.appliedDate)-new Date(a.appliedDate);
+    if (adminSort==="oldest") return new Date(a.appliedDate)-new Date(b.appliedDate);
+    return 0; // pending-first: all pending
+  });
 
-          {/* Play/Pause overlay */}
-          <div className="play-pause-overlay" onClick={() => elapsed >= DURATION ? reset() : setPlaying(p => !p)}>
-            {elapsed >= DURATION ? "↺" : playing ? "⏸" : "▶"}
-          </div>
+  // ── ADMIN ─────────────────────────────────────────────────────────────────
+  const approve = (app) => {
+    setLiveStartups(p => [...p, {
+      ...app, id:Date.now(), raised:0, target:1000000, tickets:0, totalTickets:200,
+      ticketPrice:5000, backers:0, trendingScore:50, raisedLast24h:0,
+      highlights:["Recently approved"], topInvestorQuote:"", topInvestorName:"",
+      color:"#888899", emoji:"🚀",
+    }]);
+    setApplications(p => p.filter(a => a.id!==app.id));
+  };
+  const confirmReject = () => {
+    setApplications(p => p.filter(a => a.id!==rejectTarget.id));
+    setRejectTarget(null); setRejectReason("");
+  };
 
-          <div className="video-screen-content">
-            <div className="video-screen-title">{startup.name}</div>
-            <div className="video-screen-tagline">{startup.tagline}</div>
-            <div className="video-timer">
-              <span className="video-time-label">{playing ? `${timeLeft}s` : elapsed > 0 ? `${timeLeft}s` : "0:45"}</span>
-              <div className="video-progress-bg">
-                <div className="video-progress-fill" style={{ width:`${pct}%` }} />
-              </div>
+  // ═══════════════════════════════════════════════════════════════════════════
+  // CSS
+  // ═══════════════════════════════════════════════════════════════════════════
+  const css = `
+    @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap');
+    *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+    html,body{background:${t.bg};font-family:'DM Sans',sans-serif;color:${t.text};overscroll-behavior:none;}
+    ::-webkit-scrollbar{width:0;height:0;}
+    input,textarea,button{outline:none;}
+
+    .app{max-width:430px;margin:0 auto;min-height:100vh;position:relative;background:${t.bg};}
+
+    /* TOP BAR */
+    .topbar{display:flex;justify-content:space-between;align-items:center;padding:14px 20px 10px;
+      position:sticky;top:0;z-index:50;background:${t.bg};border-bottom:1px solid ${t.border};}
+    .logo{font-family:'Syne',sans-serif;font-weight:800;font-size:21px;color:${t.accent};letter-spacing:-0.5px;}
+    .logo span{color:${t.text};}
+    .dm-btn{background:${t.input};border:none;border-radius:20px;padding:6px 12px;cursor:pointer;
+      font-size:13px;color:${t.text};font-family:'DM Sans',sans-serif;}
+
+    /* BOTTOM NAV */
+    .bnav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;
+      background:${t.nav};border-top:1px solid ${t.border};display:flex;z-index:100;
+      padding-bottom:env(safe-area-inset-bottom,8px);}
+    .bnav-item{flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 0 8px;
+      cursor:pointer;gap:3px;border:none;background:none;color:${t.sub};transition:color .2s;}
+    .bnav-item.on{color:${t.accent};}
+    .bnav-item svg{width:22px;height:22px;}
+    .bnav-label{font-size:10px;font-family:'DM Sans',sans-serif;font-weight:500;}
+
+    /* FEED */
+    .feed{padding:0 16px 110px;}
+    .pull-hint{text-align:center;padding:10px;font-size:13px;color:${t.accent};}
+    @keyframes spin{to{transform:rotate(360deg);}}
+    .spinning{display:inline-block;animation:spin 1s linear infinite;}
+
+    .card{background:${t.card};border:1px solid ${t.border};border-radius:22px;padding:20px;
+      margin-bottom:16px;cursor:pointer;transition:transform .15s,border-color .15s;position:relative;}
+    .card:active{transform:scale(0.99);}
+    .card.active-card{border-color:${t.accent}40;box-shadow:0 0 0 1px ${t.accent}20;}
+
+    .card-head{display:flex;align-items:flex-start;gap:12px;margin-bottom:12px;}
+    .c-emoji{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;
+      justify-content:center;font-size:26px;flex-shrink:0;}
+    .c-info{flex:1;}
+    .c-name{font-family:'Syne',sans-serif;font-weight:700;font-size:17px;color:${t.text};}
+    .c-tag{font-size:13px;color:${t.sub};margin-top:2px;line-height:1.4;}
+    .s-badge{background:${t.input};border-radius:8px;padding:4px 8px;font-size:11px;
+      color:${t.sub};font-weight:500;white-space:nowrap;flex-shrink:0;}
+
+    .c-pitch{font-size:13.5px;color:${t.sub};line-height:1.6;margin-bottom:14px;
+      display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+
+    /* TRACTION TICKER */
+    .ticker{background:${t.accent}12;border:1px solid ${t.accent}30;border-radius:10px;
+      padding:9px 12px;margin-bottom:14px;display:flex;align-items:center;gap:7px;font-size:12px;}
+    .tdot{width:6px;height:6px;border-radius:50%;background:${t.accent};flex-shrink:0;
+      animation:pulse 1.5s ease-in-out infinite;}
+    @keyframes pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.4;transform:scale(.6);}}
+
+    /* PROGRESS */
+    .prog-section{margin-bottom:14px;}
+    .prog-row{display:flex;justify-content:space-between;margin-bottom:6px;}
+    .prog-raised{font-family:'Syne',sans-serif;font-weight:700;font-size:16px;}
+    .prog-target{font-size:13px;color:${t.sub};}
+    .prog-bar{height:6px;background:${t.input};border-radius:99px;overflow:hidden;}
+    .prog-fill{height:100%;border-radius:99px;transition:width .5s ease;}
+    .prog-meta{display:flex;justify-content:space-between;margin-top:6px;font-size:12px;color:${t.sub};}
+
+    /* BUTTONS */
+    .row-btns{display:flex;gap:10px;}
+    .watch-btn{flex:1;background:${t.input};border:1px solid ${t.border};border-radius:12px;
+      padding:12px;font-size:14px;font-weight:600;color:${t.text};cursor:pointer;
+      font-family:'DM Sans',sans-serif;transition:border-color .2s;}
+    .watch-btn:active{border-color:${t.accent};}
+    .inv-btn{flex:1;border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:700;
+      cursor:pointer;font-family:'Syne',sans-serif;transition:all .2s;position:relative;overflow:hidden;}
+    .inv-btn.fresh{background:${t.accent};color:#fff;}
+    .inv-btn.done{background:${t.green};color:#fff;}
+    .inv-btn:active{transform:scale(0.96);}
+    @keyframes coinburst{0%{transform:scale(1);}30%{transform:scale(1.18);}65%{transform:scale(0.94);}100%{transform:scale(1);}}
+    .inv-btn.pop{animation:coinburst .5s ease;}
+
+    /* VIDEO MODAL */
+    .vmodal{position:fixed;inset:0;background:#000;z-index:200;display:flex;flex-direction:column;}
+    .vpanel{flex:1;display:flex;align-items:center;justify-content:center;position:relative;}
+    .vscreen{width:100%;max-width:430px;aspect-ratio:9/16;background:linear-gradient(145deg,#0f0f1e,#16213e,#0d0d1a);
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      position:relative;overflow:hidden;}
+    .vbg-emoji{font-size:130px;opacity:.06;position:absolute;user-select:none;}
+    .vcontent{position:relative;z-index:1;text-align:center;padding:40px;}
+    .v-startup{font-family:'Syne',sans-serif;font-weight:800;font-size:28px;color:#fff;margin-bottom:10px;}
+    .v-caption{font-size:15px;color:rgba(255,255,255,.75);line-height:1.6;}
+    .v-timer{font-family:'Syne',sans-serif;font-size:52px;font-weight:800;color:${t.accent};margin-top:24px;}
+    .vprog-bar{position:absolute;bottom:0;left:0;right:0;height:3px;background:rgba(255,255,255,.15);}
+    .vprog-fill{height:100%;background:${t.accent};transition:width .1s linear;}
+    .vclose{position:absolute;top:20px;right:20px;background:rgba(0,0,0,.5);border:none;
+      border-radius:50%;width:38px;height:38px;color:#fff;font-size:18px;cursor:pointer;
+      display:flex;align-items:center;justify-content:center;z-index:10;}
+    .vinfo{padding:20px;background:${t.bg};}
+    .v-name{font-family:'Syne',sans-serif;font-size:19px;font-weight:800;}
+    .v-stag{font-size:13px;color:${t.sub};margin-top:4px;}
+    .vactions{display:flex;gap:12px;margin-top:16px;}
+
+    /* DETAIL */
+    .detail-wrap{padding:0 0 110px;}
+    .d-hero{padding:20px;background:${t.card};border-bottom:1px solid ${t.border};}
+    .d-hero-top{display:flex;align-items:center;gap:14px;margin-bottom:16px;}
+    .d-emoji{width:64px;height:64px;border-radius:18px;display:flex;align-items:center;
+      justify-content:center;font-size:32px;flex-shrink:0;}
+    .d-name{font-family:'Syne',sans-serif;font-weight:800;font-size:24px;}
+    .d-tagline{font-size:14px;color:${t.sub};margin-top:4px;}
+    .d-city{font-size:12px;color:${t.sub};margin-top:4px;}
+    .d-section{padding:20px;border-bottom:1px solid ${t.border};}
+    .d-sec-title{font-family:'Syne',sans-serif;font-weight:700;font-size:16px;margin-bottom:12px;}
+    .hl-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+    .hl-card{background:${t.input};border-radius:12px;padding:12px;font-size:13px;font-weight:500;}
+    .quote-block{background:${t.input};border-left:3px solid ${t.accent};border-radius:0 12px 12px 0;padding:14px;}
+    .quote-text{font-size:14px;font-style:italic;line-height:1.6;}
+    .quote-by{font-size:12px;color:${t.sub};margin-top:8px;font-weight:600;}
+    .sim-card{display:flex;align-items:center;gap:12px;background:${t.input};border-radius:14px;
+      padding:14px;margin-bottom:10px;cursor:pointer;}
+    .sim-emoji{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;
+      justify-content:center;font-size:20px;flex-shrink:0;}
+    .invest-sticky{position:fixed;bottom:68px;left:50%;transform:translateX(-50%);
+      width:100%;max-width:430px;padding:12px 20px;background:${t.nav};
+      border-top:1px solid ${t.border};z-index:90;}
+
+    /* EXPLORE */
+    .explore-wrap{padding:0 16px 110px;}
+    .sec-head{font-family:'Syne',sans-serif;font-weight:700;font-size:18px;padding:16px 0 12px;}
+    .trend-scroll{display:flex;gap:12px;overflow-x:auto;padding-bottom:4px;
+      margin:0 -16px;padding-left:16px;padding-right:16px;}
+    .trend-card{min-width:155px;background:${t.card};border:1px solid ${t.border};
+      border-radius:18px;padding:16px;cursor:pointer;flex-shrink:0;transition:border-color .2s;}
+    .trend-card:active{border-color:${t.accent};}
+    .trend-rank{font-size:10px;color:${t.accent};font-weight:700;text-transform:uppercase;
+      letter-spacing:1px;margin-bottom:8px;}
+    .trend-emoji{font-size:28px;margin-bottom:8px;}
+    .trend-name{font-family:'Syne',sans-serif;font-weight:700;font-size:14px;}
+    .trend-24h{font-size:12px;color:${t.accent};margin-top:4px;font-weight:600;}
+    .filter-row{display:flex;gap:8px;overflow-x:auto;padding:10px 0;
+      margin:0 -16px;padding-left:16px;}
+    .chip{background:${t.input};border:1px solid ${t.border};border-radius:99px;
+      padding:7px 14px;font-size:13px;white-space:nowrap;cursor:pointer;color:${t.sub};
+      font-family:'DM Sans',sans-serif;font-weight:500;transition:all .2s;}
+    .chip.on{background:${t.accent};border-color:${t.accent};color:#fff;}
+
+    /* PORTFOLIO */
+    .port-wrap{padding:0 16px 110px;}
+    .port-summary{background:${t.card};border:1px solid ${t.border};border-radius:22px;
+      padding:28px;margin:16px 0;text-align:center;}
+    .port-amt{font-family:'Syne',sans-serif;font-size:38px;font-weight:800;color:${t.accent};}
+    .port-lbl{font-size:13px;color:${t.sub};margin-top:4px;}
+    .port-card{background:${t.card};border:1px solid ${t.border};border-radius:16px;
+      padding:16px;margin-bottom:12px;display:flex;align-items:center;gap:14px;cursor:pointer;}
+
+    /* PROFILE */
+    .prof-wrap{padding:0 16px 110px;}
+    .prof-header{text-align:center;padding:32px 20px;}
+    .prof-avatar{width:80px;height:80px;border-radius:50%;background:${t.accent};
+      display:flex;align-items:center;justify-content:center;font-size:36px;margin:0 auto 16px;}
+    .prof-name{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;}
+    .stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:16px 0;}
+    .stat-card{background:${t.card};border:1px solid ${t.border};border-radius:14px;
+      padding:14px;text-align:center;}
+    .stat-val{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;}
+    .stat-lbl{font-size:11px;color:${t.sub};margin-top:3px;}
+    .admin-row-btn{width:100%;padding:16px;background:${t.input};border:1px solid ${t.border};
+      border-radius:14px;color:${t.text};font-size:15px;font-weight:600;font-family:'DM Sans',sans-serif;
+      cursor:pointer;text-align:left;margin-top:12px;}
+
+    /* ADMIN */
+    .adm-wrap{padding:0 16px 110px;}
+    .adm-login{display:flex;flex-direction:column;gap:14px;padding:40px 0;}
+    .adm-input{background:${t.input};border:1px solid ${t.border};border-radius:12px;
+      padding:14px 16px;color:${t.text};font-size:15px;font-family:'DM Sans',sans-serif;width:100%;}
+    .adm-submit{background:${t.accent};border:none;border-radius:12px;padding:14px;color:#fff;
+      font-size:16px;font-weight:700;font-family:'Syne',sans-serif;cursor:pointer;}
+    .sort-row{display:flex;gap:8px;margin:12px 0;overflow-x:auto;}
+    .sort-chip{background:${t.input};border:1px solid ${t.border};border-radius:8px;
+      padding:7px 12px;font-size:12px;cursor:pointer;color:${t.sub};white-space:nowrap;
+      font-family:'DM Sans',sans-serif;}
+    .sort-chip.on{background:${t.accent}20;border-color:${t.accent};color:${t.accent};}
+    .app-card{background:${t.card};border:1px solid ${t.border};border-radius:16px;
+      padding:16px;margin-bottom:12px;}
+    .app-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
+    .app-name{font-family:'Syne',sans-serif;font-weight:700;font-size:16px;}
+    .app-by{font-size:13px;color:${t.sub};margin-top:2px;}
+    .app-date{font-size:11px;color:${t.sub};}
+    .app-pitch{font-size:13px;color:${t.sub};line-height:1.5;margin-bottom:12px;}
+    .app-actions{display:flex;gap:10px;}
+    .btn-approve{flex:1;background:${t.green};border:none;border-radius:10px;padding:11px;
+      color:#fff;font-weight:700;font-size:14px;cursor:pointer;font-family:'Syne',sans-serif;}
+    .btn-reject{flex:1;background:${t.input};border:1px solid #ef444440;border-radius:10px;
+      padding:11px;color:#EF4444;font-weight:700;font-size:14px;cursor:pointer;font-family:'Syne',sans-serif;}
+
+    /* REJECT MODAL */
+    .rmod-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:300;
+      display:flex;align-items:flex-end;}
+    .rmod{background:${t.card};border-radius:24px 24px 0 0;padding:24px;width:100%;}
+    .rmod-title{font-family:'Syne',sans-serif;font-weight:700;font-size:18px;margin-bottom:4px;}
+    .rmod-sub{font-size:14px;color:${t.sub};margin-bottom:14px;}
+    .rmod-ta{background:${t.input};border:1px solid ${t.border};border-radius:12px;padding:14px;
+      color:${t.text};font-size:14px;font-family:'DM Sans',sans-serif;width:100%;min-height:90px;resize:none;}
+    .rmod-btns{display:flex;gap:10px;margin-top:14px;}
+    .rmod-cancel{flex:1;background:${t.input};border:none;border-radius:12px;padding:14px;
+      color:${t.text};font-size:15px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
+    .rmod-confirm{flex:1;background:#EF4444;border:none;border-radius:12px;padding:14px;
+      color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:'Syne',sans-serif;}
+
+    /* INVEST CONFIRM MODAL */
+    .imod-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:300;
+      display:flex;align-items:flex-end;}
+    .imod{background:${t.card};border-radius:24px 24px 0 0;padding:28px;width:100%;}
+    .imod-emoji{font-size:40px;margin-bottom:12px;}
+    .imod-title{font-family:'Syne',sans-serif;font-weight:800;font-size:20px;margin-bottom:6px;}
+    .imod-sub{font-size:14px;color:${t.sub};line-height:1.6;margin-bottom:20px;}
+    .imod-btns{display:flex;gap:10px;}
+    .imod-cancel{flex:1;background:${t.input};border:none;border-radius:12px;padding:14px;
+      color:${t.text};font-size:15px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
+    .imod-confirm{flex:1;background:${t.accent};border:none;border-radius:12px;padding:14px;
+      color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:'Syne',sans-serif;}
+
+    /* BACK BTN */
+    .back-btn{display:flex;align-items:center;gap:6px;padding:0;color:${t.sub};cursor:pointer;
+      font-size:14px;background:none;border:none;font-family:'DM Sans',sans-serif;}
+
+    /* EMPTY */
+    .empty{text-align:center;padding:60px 20px;color:${t.sub};}
+    .empty-ico{font-size:48px;margin-bottom:12px;}
+  `;
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SUB-COMPONENTS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  const BottomNav = () => {
+    const items = [
+      { id:"home",      label:"Home",      icon:<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> },
+      { id:"explore",   label:"Explore",   icon:<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> },
+      { id:"portfolio", label:"Portfolio", icon:<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg> },
+      { id:"profile",   label:"Profile",   icon:<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
+    ];
+    return (
+      <nav className="bnav">
+        {items.map(item => (
+          <button key={item.id} className={`bnav-item ${tab===item.id?"on":""}`}
+            onClick={() => { setTab(item.id); setDetail(null); }}>
+            {item.icon}
+            <span className="bnav-label">{item.label}</span>
+          </button>
+        ))}
+      </nav>
+    );
+  };
+
+  const VideoModal = () => {
+    if (!video) return null;
+    const s = video;
+    const remaining = Math.max(0, Math.ceil(45*(1-videoProgress/100)));
+    return (
+      <div className="vmodal">
+        <div className="vpanel">
+          <div className="vscreen">
+            <div className="vbg-emoji">{s.emoji}</div>
+            <div className="vcontent">
+              <div className="v-startup">{s.name}</div>
+              <div className="v-caption">{s.pitch.slice(0,130)}...</div>
+              <div className="v-timer">{remaining>0 ? `0:${remaining.toString().padStart(2,'0')}` : "Done ✓"}</div>
             </div>
-            <div className="video-controls">
-              <button className="video-ctrl-btn video-play-btn" onClick={() => elapsed >= DURATION ? reset() : setPlaying(p => !p)}>
-                {elapsed >= DURATION ? "↺ Replay" : playing ? "⏸ Pause" : "▶ Play Pitch"}
-              </button>
-              <button className="video-ctrl-btn video-detail-btn" onClick={() => { onClose(); onDetail(startup); }}>
-                View Full Pitch ↗
-              </button>
+            <div className="vprog-bar">
+              <div className="vprog-fill" style={{width:`${videoProgress}%`}}/>
             </div>
+          </div>
+          <button className="vclose" onClick={closeVideo}>✕</button>
+        </div>
+        <div className="vinfo">
+          <div className="v-name">{s.name}</div>
+          <div className="v-stag">{s.tagline}</div>
+          <div className="vactions">
+            <button className="watch-btn" onClick={closeVideo} style={{flex:1}}>Close</button>
+            <button
+              className={`inv-btn ${investments[s.id]?"done":"fresh"} ${investAnim===s.id?"pop":""}`}
+              style={{flex:1}}
+              onClick={() => investments[s.id] ? null : setInvestConfirm(s)}
+            >
+              {investments[s.id] ? `✓ Invested` : `Invest ₹${s.ticketPrice.toLocaleString()}`}
+            </button>
           </div>
         </div>
       </div>
+    );
+  };
+
+  const InvestConfirmModal = () => {
+    if (!investConfirm) return null;
+    const s = investConfirm;
+    return (
+      <div className="imod-overlay" onClick={() => setInvestConfirm(null)}>
+        <div className="imod" onClick={e=>e.stopPropagation()}>
+          <div className="imod-emoji">{s.emoji}</div>
+          <div className="imod-title">Invest in {s.name}?</div>
+          <div className="imod-sub">
+            You're committing <strong>₹{s.ticketPrice.toLocaleString()}</strong> to {s.name}.
+            This is a mock investment on InstaVest MVP — no real money moves.
+          </div>
+          <div className="imod-btns">
+            <button className="imod-cancel" onClick={() => setInvestConfirm(null)}>Cancel</button>
+            <button className="imod-confirm" onClick={() => doInvest(s)}>Confirm ₹{s.ticketPrice.toLocaleString()} →</button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const Ticker = ({ s }) => (
+    <div className="ticker">
+      <div className="tdot"/>
+      <span style={{color:t.sub}}>
+        <strong style={{color:t.accent}}>{fmt(s.raisedLast24h)}</strong> raised today ·{" "}
+        <strong style={{color:t.text}}>{s.backers}</strong> investors
+      </span>
     </div>
   );
-}
 
-// ── VIDEO CARD ──────────────────────────────────────────────────────
-function VideoCard({ startup, liked, onLike, onDetail, onPlay }) {
-  const pct = Math.round((startup.raised / startup.fundingGoal) * 100);
-  const isClosed = startup.raised >= startup.fundingGoal;
-  const ticketsLeft = startup.totalTickets - startup.ticketsSold;
-  return (
-    <div className="video-card">
-      <div className="video-bg" style={{ background: startup.gradient }}>{startup.emoji}</div>
-      <div className="video-overlay" style={{ background:"linear-gradient(to top,rgba(0,0,0,0.92) 0%,rgba(0,0,0,0.4) 60%,transparent 100%)" }} />
-      <div className="video-content">
-        <div className="video-tags">{startup.sector.map(s => <span key={s} className="video-tag">{s}</span>)}</div>
-        <div className="video-title">{startup.name}</div>
-        <div className="video-tagline">{startup.tagline}</div>
-        <div className="video-founder">
-          <div className="founder-avatar">{startup.founderInitials}</div>
-          <div>
-            <div className="founder-name">{startup.founderName}</div>
-            <div className="founder-title-small">{startup.founderTitle}</div>
-          </div>
-        </div>
-        <div className="funding-bar-wrap">
-          <div className="funding-bar-row">
-            <span className="funding-label">{isClosed ? "Round Closed 🎉" : `${pct}% funded`}</span>
-            <span className="funding-amount">{formatCurrency(startup.raised)} / {formatCurrency(startup.fundingGoal)}</span>
-          </div>
-          <div className="funding-bar-bg"><div className="funding-bar-fill" style={{ width:`${Math.min(pct,100)}%` }} /></div>
-        </div>
-        <div className="video-actions">
-          <button className="action-btn btn-play" onClick={() => onPlay(startup)}>▶ Watch 45s</button>
-          <button className="action-btn btn-invest" onClick={() => onDetail(startup)}>View Pitch ↗</button>
-          <button className={`action-btn btn-like ${liked ? "liked" : ""}`} onClick={() => onLike(startup.id)}>{liked ? "❤️" : "🤍"}</button>
-        </div>
-        <div className="ticket-info">{isClosed ? "No tickets remaining" : `${ticketsLeft} tickets left · Min ₹${startup.ticketSize.toLocaleString('en-IN')}`}</div>
+  const ProgBar = ({ s }) => (
+    <div className="prog-section">
+      <div className="prog-row">
+        <span className="prog-raised">{fmt(s.raised)}</span>
+        <span className="prog-target">of {fmt(s.target)}</span>
+      </div>
+      <div className="prog-bar">
+        <div className="prog-fill" style={{width:`${pct(s.raised,s.target)}%`,background:s.color}}/>
+      </div>
+      <div className="prog-meta">
+        <span>{pct(s.raised,s.target)}% funded</span>
+        <span>{s.totalTickets-s.tickets} tickets left</span>
       </div>
     </div>
   );
-}
 
-// ── FEED PAGE ───────────────────────────────────────────────────────
-function FeedPage({ onDetail, liked, onLike, onPlay }) {
-  return (
-    <div className="feed-container">
-      <div className="feed-center">
-        <div style={{ display:"flex", flexDirection:"column" }}>
-          <div className="feed-phone">
-            <div className="feed-scroll">
-              {STARTUPS.map(s => <VideoCard key={s.id} startup={s} liked={liked.has(s.id)} onLike={onLike} onDetail={onDetail} onPlay={onPlay} />)}
-            </div>
-          </div>
-          <div className="scroll-hint">↕ Scroll to explore pitches</div>
+  const InvBtn = ({ s, big=false }) => (
+    <button
+      className={`inv-btn ${investments[s.id]?"done":"fresh"} ${investAnim===s.id?"pop":""}`}
+      style={big ? {width:"100%",fontSize:16,padding:"15px"} : {flex:1}}
+      onClick={() => investments[s.id] ? null : setInvestConfirm(s)}
+    >
+      {investments[s.id]
+        ? `✓ Invested ₹${s.ticketPrice.toLocaleString()}`
+        : `Invest ₹${s.ticketPrice.toLocaleString()} →`}
+    </button>
+  );
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ADMIN VIEW
+  // ═══════════════════════════════════════════════════════════════════════════
+  if (showAdmin) {
+    return (
+      <div className="app" style={{background:t.bg,color:t.text}}>
+        <style>{css}</style>
+        <div className="topbar">
+          <button className="back-btn" onClick={()=>{setShowAdmin(false);setAdminAuthed(false);setAdminPass("");}}>← Back</button>
+          <span className="logo">Insta<span>Vest</span> <span style={{fontSize:13,color:t.sub,fontFamily:"DM Sans"}}>Admin</span></span>
+          <div/>
         </div>
-        <div className="side-panel">
-          <div className="side-header">Discover India's<br />next big startups.</div>
-          <div className="side-sub">Watch 45-second pitches. Back the ones you believe in. Start from ₹5,000 and become part of India's startup revolution.</div>
-          <div className="side-cards">
-            <div className="side-card">
-              <div className="side-card-title">📊 Platform Stats</div>
-              <div className="stats-grid">
-                <div><div className="stat-label">Startups Live</div><div className="stat-value">8</div></div>
-                <div><div className="stat-label">Total Raised</div><div className="stat-value">₹5.4Cr</div></div>
-                <div><div className="stat-label">Avg Ticket</div><div className="stat-value">₹7,500</div></div>
-                <div><div className="stat-label">Active Investors</div><div className="stat-value">4,820</div></div>
-              </div>
+        <div className="adm-wrap">
+          {!adminAuthed ? (
+            <div className="adm-login">
+              <h2 style={{fontFamily:"Syne",fontWeight:800,fontSize:24}}>Admin Panel</h2>
+              <p style={{color:t.sub,fontSize:14}}>Enter the admin password to continue.</p>
+              <input className="adm-input" type="password" placeholder="Password"
+                value={adminPass} onChange={e=>setAdminPass(e.target.value)}
+                onKeyDown={e=>e.key==="Enter"&&adminPass==="instavest2026"&&setAdminAuthed(true)}/>
+              <button className="adm-submit" onClick={()=>adminPass==="instavest2026"&&setAdminAuthed(true)}>
+                Login →
+              </button>
             </div>
-            <div className="side-card">
-              <div className="side-card-title">🔥 Trending Now</div>
-              {STARTUPS.slice(0,4).map(s => {
-                const pct = Math.round((s.raised/s.fundingGoal)*100);
-                return (
-                  <div key={s.id} onClick={() => onDetail(s)} style={{ display:"flex",alignItems:"center",gap:"12px",padding:"8px 0",borderBottom:"1px solid var(--border)",cursor:"pointer" }}>
-                    <span style={{ fontSize:"22px" }}>{s.emoji}</span>
-                    <div style={{ flex:1 }}>
-                      <div style={{ fontWeight:600,fontSize:"14px" }}>{s.name}</div>
-                      <div style={{ fontSize:"12px",color:"var(--text3)" }}>{pct}% funded</div>
+          ) : (
+            <>
+              <h2 style={{fontFamily:"Syne",fontWeight:800,fontSize:20,padding:"16px 0 4px"}}>
+                Pending Applications ({applications.length})
+              </h2>
+              <div className="sort-row">
+                {[["pending-first","Pending First"],["newest","Newest"],["oldest","Oldest"]].map(([v,l])=>(
+                  <button key={v} className={`sort-chip ${adminSort===v?"on":""}`} onClick={()=>setAdminSort(v)}>{l}</button>
+                ))}
+              </div>
+              {sortedApps().length===0
+                ? <div className="empty"><div className="empty-ico">✅</div><p>All caught up!</p></div>
+                : sortedApps().map(app => (
+                  <div className="app-card" key={app.id}>
+                    <div className="app-head">
+                      <div>
+                        <div className="app-name">{app.name}</div>
+                        <div className="app-by">by {app.founderName} · {app.city} · {app.sector}</div>
+                      </div>
+                      <div className="app-date">{app.appliedDate}</div>
                     </div>
-                    <span style={{ fontSize:"13px",color:"var(--gold)",fontWeight:700 }}>→</span>
+                    <p className="app-pitch">{app.pitch}</p>
+                    <div className="app-actions">
+                      <button className="btn-approve" onClick={()=>approve(app)}>✓ Approve</button>
+                      <button className="btn-reject" onClick={()=>{setRejectTarget(app);setRejectReason("");}}>✕ Reject</button>
+                    </div>
                   </div>
-                );
-              })}
+                ))
+              }
+
+              <h2 style={{fontFamily:"Syne",fontWeight:800,fontSize:20,padding:"20px 0 12px"}}>
+                Live Rounds ({liveStartups.length})
+              </h2>
+              {liveStartups.map(s=>(
+                <div className="app-card" key={s.id} style={{marginBottom:10}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <span style={{fontFamily:"Syne",fontWeight:700}}>{s.emoji} {s.name}</span>
+                    <span style={{fontSize:13,color:t.accent,fontWeight:700}}>{pct(s.raised,s.target)}%</span>
+                  </div>
+                  <div style={{marginTop:8}}>
+                    <div className="prog-bar"><div className="prog-fill" style={{width:`${pct(s.raised,s.target)}%`,background:s.color}}/></div>
+                  </div>
+                  <div style={{display:"flex",justifyContent:"space-between",marginTop:6,fontSize:12,color:t.sub}}>
+                    <span>{fmt(s.raised)}</span>
+                    <span>{s.backers} backers</span>
+                    <span>{s.tickets}/{s.totalTickets} tickets</span>
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+
+        {rejectTarget && (
+          <div className="rmod-overlay" onClick={()=>setRejectTarget(null)}>
+            <div className="rmod" onClick={e=>e.stopPropagation()}>
+              <div className="rmod-title">Reject {rejectTarget.name}?</div>
+              <div className="rmod-sub">Optionally add a reason for the founder.</div>
+              <textarea className="rmod-ta" placeholder="e.g. Insufficient traction, unclear unit economics…"
+                value={rejectReason} onChange={e=>setRejectReason(e.target.value)}/>
+              <div className="rmod-btns">
+                <button className="rmod-cancel" onClick={()=>setRejectTarget(null)}>Cancel</button>
+                <button className="rmod-confirm" onClick={confirmReject}>Reject</button>
+              </div>
             </div>
-            <div className="side-card">
-              <div className="side-card-title">💡 How It Works</div>
-              {[["1","Watch 45-second pitches in your feed"],["2","Like the ones you believe in"],["3","Invest from ₹5,000 per ticket"],["4","Round closes when target is met"]].map(([n,t]) => (
-                <div key={n} style={{ display:"flex",gap:"10px",alignItems:"flex-start",marginBottom:"10px" }}>
-                  <div style={{ width:"22px",height:"22px",borderRadius:"50%",background:"var(--gold)",color:"#000",fontWeight:800,fontSize:"11px",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:"1px" }}>{n}</div>
-                  <div style={{ fontSize:"13px",color:"var(--text2)",lineHeight:1.5 }}>{t}</div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // STARTUP DETAIL VIEW
+  // ═══════════════════════════════════════════════════════════════════════════
+  if (detail) {
+    const s = detail;
+    const sim = similar(s);
+    return (
+      <div className="app" style={{background:t.bg,color:t.text}}>
+        <style>{css}</style>
+        <div className="topbar">
+          <button className="back-btn" onClick={()=>setDetail(null)}>← Back</button>
+          <span className="logo">Insta<span>Vest</span></span>
+          <button className="dm-btn" onClick={()=>setDark(d=>!d)}>{dark?"☀️":"🌙"}</button>
+        </div>
+        <div className="detail-wrap">
+          <div className="d-hero">
+            <div className="d-hero-top">
+              <div className="d-emoji" style={{background:s.color+"20"}}>{s.emoji}</div>
+              <div>
+                <div className="d-name">{s.name}</div>
+                <div className="d-tagline">{s.tagline}</div>
+                <div className="d-city">📍 {s.city} · {s.sector}</div>
+              </div>
+            </div>
+            <Ticker s={s}/>
+            <ProgBar s={s}/>
+            <button className="watch-btn" style={{width:"100%"}} onClick={()=>openVideo(s)}>▶ Watch 45-sec Pitch</button>
+          </div>
+
+          <div className="d-section">
+            <div className="d-sec-title">The Pitch</div>
+            <p style={{fontSize:14,color:t.sub,lineHeight:1.7}}>{s.pitch}</p>
+          </div>
+
+          <div className="d-section">
+            <div className="d-sec-title">Traction</div>
+            <div className="hl-grid">
+              {s.highlights.map((h,i)=><div className="hl-card" key={i}>{h}</div>)}
+            </div>
+          </div>
+
+          <div className="d-section">
+            <div className="d-sec-title">The Founder</div>
+            <div style={{display:"flex",gap:12,alignItems:"center",marginBottom:12}}>
+              <div style={{width:48,height:48,borderRadius:"50%",background:s.color+"25",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0}}>👤</div>
+              <div>
+                <div style={{fontFamily:"Syne",fontWeight:700,fontSize:16}}>{s.founderName}</div>
+                <div style={{fontSize:13,color:t.sub}}>{s.founderRole}</div>
+              </div>
+            </div>
+            <p style={{fontSize:14,color:t.sub,lineHeight:1.6}}>{s.founderBio}</p>
+          </div>
+
+          {s.topInvestorQuote && (
+            <div className="d-section">
+              <div className="d-sec-title">What investors say</div>
+              <div className="quote-block">
+                <div className="quote-text">"{s.topInvestorQuote}"</div>
+                <div className="quote-by">— {s.topInvestorName}, top backer</div>
+              </div>
+            </div>
+          )}
+
+          {sim.length>0 && (
+            <div className="d-section">
+              <div className="d-sec-title">Also in {s.sector}</div>
+              {sim.map(x=>(
+                <div className="sim-card" key={x.id} onClick={()=>setDetail(x)}>
+                  <div className="sim-emoji" style={{background:x.color+"20"}}>{x.emoji}</div>
+                  <div style={{flex:1}}>
+                    <div style={{fontFamily:"Syne",fontWeight:700,fontSize:14}}>{x.name}</div>
+                    <div style={{fontSize:12,color:t.sub,marginTop:2}}>{x.tagline}</div>
+                  </div>
+                  <div style={{fontSize:12,color:t.accent,fontWeight:700}}>{pct(x.raised,x.target)}%</div>
                 </div>
               ))}
             </div>
-          </div>
+          )}
+          <div style={{height:80}}/>
         </div>
-      </div>
-    </div>
-  );
-}
 
-// ── DETAIL PAGE ─────────────────────────────────────────────────────
-function DetailPage({ startup, onBack, liked, onLike, onPlay }) {
-  const pct = Math.round((startup.raised/startup.fundingGoal)*100);
-  const isClosed = startup.raised >= startup.fundingGoal;
-  const ticketsLeft = startup.totalTickets - startup.ticketsSold;
-  const [invested, setInvested] = useState(false);
-  return (
-    <div className="detail-page">
-      <div className="detail-hero" style={{ background: startup.gradient }}>
-        <div className="detail-hero-bg">{startup.emoji}</div>
-        <div className="detail-hero-overlay" style={{ background:"linear-gradient(to top,rgba(0,0,0,0.85) 0%,rgba(0,0,0,0.1) 100%)" }} />
-        <button className="detail-back" onClick={onBack}>← Back</button>
-        <button className="detail-play-btn" onClick={() => onPlay(startup)}>▶ Watch 45s Pitch</button>
-        <div className="detail-hero-content">
-          <div className="detail-tags">{startup.sector.map(s => <span key={s} className="detail-tag">{s}</span>)}</div>
-          <div className="detail-name">{startup.name}</div>
-          <div className="detail-tagline">{startup.tagline}</div>
+        <div className="invest-sticky">
+          <InvBtn s={s} big/>
         </div>
-      </div>
-      <div className="detail-body">
-        <div className="funding-box">
-          <div className="funding-box-header">
-            <div><div className="funding-raised">{formatCurrency(startup.raised)}</div><div className="funding-goal">of {formatCurrency(startup.fundingGoal)} goal</div></div>
-            {isClosed ? <div className="closed-badge">🔒 Round Closed</div> : <div className="funding-badge">🟢 Round Open</div>}
-          </div>
-          <div className="funding-bar-big"><div className="funding-bar-big-fill" style={{ width:`${Math.min(pct,100)}%` }} /></div>
-          <div className="funding-meta">
-            <div><div className="funding-meta-label">Funded</div><div className="funding-meta-value">{pct}%</div></div>
-            <div><div className="funding-meta-label">Tickets Left</div><div className="funding-meta-value">{ticketsLeft}</div></div>
-            <div><div className="funding-meta-label">Min Ticket</div><div className="funding-meta-value">₹{startup.ticketSize.toLocaleString('en-IN')}</div></div>
-            <div><div className="funding-meta-label">Investors</div><div className="funding-meta-value">{startup.ticketsSold}</div></div>
-          </div>
-          {invested
-            ? <div style={{ background:"rgba(16,185,129,0.1)",border:"1px solid rgba(16,185,129,0.3)",borderRadius:"12px",padding:"14px",textAlign:"center",marginTop:"16px",color:"#10b981",fontWeight:600,fontSize:"15px" }}>✅ Expression of Interest Registered! The team will contact you shortly.</div>
-            : <button className="invest-big-btn" onClick={() => setInvested(true)} disabled={isClosed}>{isClosed ? "Round Closed" : `Express Interest — ₹${startup.ticketSize.toLocaleString('en-IN')} Min`}</button>
-          }
-        </div>
-        <div className="section"><div className="section-title">Founder Story</div>
-          <div className="section-card"><div className="founder-big">
-            <div className="founder-avatar-big">{startup.founderInitials}</div>
-            <div><div className="founder-big-name">{startup.founderName}</div><div className="founder-big-role">{startup.founderTitle}</div><div className="founder-story">{startup.founderStory}</div></div>
-          </div></div>
-        </div>
-        <div className="section"><div className="section-title">Traction</div>
-          <div className="traction-grid">{startup.traction.map((t,i) => <div key={i} className="traction-item"><div className="traction-value">{t.value}</div><div className="traction-label">{t.label}</div></div>)}</div>
-        </div>
-        <div className="section"><div className="section-title">Financials</div>
-          <div className="financials-grid">{startup.financials.map((f,i) => <div key={i} className="fin-item"><div className="fin-value">{f.value}</div><div className="fin-label">{f.label}</div></div>)}</div>
-        </div>
-        <div className="section"><div className="section-title">The Team</div>
-          <div className="team-grid">{startup.team.map((m,i) => (
-            <div key={i} className="team-card">
-              <div className="team-avatar">{m.initials}</div>
-              <div className="team-name">{m.name}</div>
-              <div className="team-role">{m.role}</div>
-              <div className="team-bg-text">{m.bg}</div>
-            </div>
-          ))}</div>
-        </div>
-        <div style={{ textAlign:"center",padding:"20px 0 40px" }}>
-          <button onClick={() => onLike(startup.id)} style={{ background:liked?"rgba(239,68,68,0.15)":"var(--card)",border:liked?"1px solid rgba(239,68,68,0.4)":"1px solid var(--border)",color:liked?"#fca5a5":"var(--text2)",padding:"10px 28px",borderRadius:"20px",cursor:"pointer",fontSize:"14px",fontFamily:"'DM Sans',sans-serif",fontWeight:600,transition:"all 0.2s" }}>
-            {liked ? "❤️ Saved to Watchlist" : "🤍 Save to Watchlist"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
-// ── EXPLORE PAGE ────────────────────────────────────────────────────
-function ExplorePage({ onDetail, liked, onLike, onPlay }) {
-  const [filter, setFilter] = useState("All");
-  const sectors = ["All","AgriTech","EdTech","FinTech","HealthTech","CleanTech","EV","Impact"];
-  const filtered = filter === "All" ? STARTUPS : STARTUPS.filter(s => s.sector.some(x => x.toLowerCase().includes(filter.toLowerCase())));
-  return (
-    <div className="explore-page">
-      <div className="explore-inner">
-        <div className="explore-header"><div className="explore-title">All Startups</div><div className="explore-sub">Browse active funding rounds. Tap any card to see the full pitch.</div></div>
-        <div className="explore-filters">
-          {sectors.map(s => <button key={s} className={`filter-btn ${filter===s?"active":""}`} onClick={() => setFilter(s)}>{s}</button>)}
+        <VideoModal/>
+        <InvestConfirmModal/>
+        <BottomNav/>
+      </div>
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // HOME
+  // ═══════════════════════════════════════════════════════════════════════════
+  if (tab==="home") {
+    const cards = filtered();
+    return (
+      <div className="app" style={{background:t.bg,color:t.text}}>
+        <style>{css}</style>
+        <div className="topbar">
+          <span className="logo">Insta<span>Vest</span></span>
+          <button className="dm-btn" onClick={()=>setDark(d=>!d)}>{dark?"☀️":"🌙"}</button>
         </div>
-        <div className="explore-grid">
-          {filtered.map(s => {
-            const pct = Math.round((s.raised/s.fundingGoal)*100);
-            const isClosed = s.raised >= s.fundingGoal;
-            return (
-              <div key={s.id} className="explore-card" onClick={() => onDetail(s)}>
-                {liked.has(s.id) && <div className="explore-liked-badge">❤️ Saved</div>}
-                <div className="explore-card-header" style={{ background:s.gradient }}>
-                  <span style={{ fontSize:"60px" }}>{s.emoji}</span>
-                  <div className="explore-card-play" onClick={e => { e.stopPropagation(); onPlay(s); }}>▶ 45s</div>
+        <div className="feed" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+          {pullRefreshing && (
+            <div className="pull-hint"><span className="spinning">↻</span> Refreshing…</div>
+          )}
+          {cards.map((s,i)=>(
+            <div className={`card ${i===feedIdx?"active-card":""}`} key={s.id}>
+              <div className="card-head" onClick={()=>setDetail(s)}>
+                <div className="c-emoji" style={{background:s.color+"20"}}>{s.emoji}</div>
+                <div className="c-info">
+                  <div className="c-name">{s.name}</div>
+                  <div className="c-tag">{s.tagline}</div>
                 </div>
-                <div className="explore-card-body">
-                  <div className="explore-card-tags">{s.sector.map(t => <span key={t} className="explore-card-tag">{t}</span>)}</div>
-                  <div className="explore-card-name">{s.name}</div>
-                  <div className="explore-card-tagline">{s.tagline}</div>
-                  <div className="explore-card-bar"><div className="explore-card-fill" style={{ width:`${Math.min(pct,100)}%` }} /></div>
-                  <div className="explore-card-meta">
-                    <span className="explore-card-pct">{pct}% {isClosed?"🔒 Closed":"funded"}</span>
-                    <span className="explore-card-ticket">Min ₹{s.ticketSize.toLocaleString('en-IN')}</span>
-                  </div>
-                </div>
+                <div className="s-badge">{s.sector}</div>
               </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── APPLY PAGE ──────────────────────────────────────────────────────
-function ApplyPage() {
-  const [submitted, setSubmitted] = useState(false);
-  const [form, setForm] = useState({ company:"",founder:"",email:"",sector:"",raise:"",traction:"" });
-  if (submitted) return (
-    <div className="apply-page"><div className="apply-inner"><div className="success-state">
-      <div className="success-icon">🎉</div>
-      <div className="success-title">Application Submitted!</div>
-      <div className="success-sub">We've received your application for <strong>{form.company}</strong>. Our team reviews all applications within 5–7 business days. If selected, we'll schedule a 30-minute call to discuss your pitch.</div>
-    </div></div></div>
-  );
-  return (
-    <div className="apply-page"><div className="apply-inner">
-      <div className="apply-title">Apply to Raise on InstaVest</div>
-      <div className="apply-sub">If selected, you'll record a 45-second pitch video and go live to thousands of investors across India.</div>
-      <div className="apply-steps">
-        {[["1","Apply below"],["2","Review (5–7 days)"],["3","Record 45s pitch"],["4","Go live"]].map(([n,t]) => (
-          <div key={n} className="apply-step"><div className="apply-step-num">{n}</div><div className="apply-step-text">{t}</div></div>
-        ))}
-      </div>
-      {[["Company Name","company","e.g. GreenHarvest"],["Founder Name","founder","Your full name"],["Email","email","you@startup.in"]].map(([label,key,ph]) => (
-        <div key={key} className="form-group"><label className="form-label">{label}</label>
-          <input className="form-input" placeholder={ph} type={key==="email"?"email":"text"} value={form[key]} onChange={e => setForm({...form,[key]:e.target.value})} />
-        </div>
-      ))}
-      <div className="form-group"><label className="form-label">Sector</label>
-        <select className="form-select" value={form.sector} onChange={e => setForm({...form,sector:e.target.value})}>
-          <option value="">Select sector</option>
-          {["AgriTech","EdTech","FinTech","HealthTech","CleanTech","EV","D2C","SaaS","AI/ML","Impact","Other"].map(s => <option key={s} value={s}>{s}</option>)}
-        </select>
-      </div>
-      <div className="form-group"><label className="form-label">How much are you looking to raise?</label>
-        <input className="form-input" placeholder="e.g. ₹1,00,00,000" value={form.raise} onChange={e => setForm({...form,raise:e.target.value})} />
-      </div>
-      <div className="form-group"><label className="form-label">Current traction / stage</label>
-        <textarea className="form-textarea" placeholder="Tell us about revenue, users, growth..." value={form.traction} onChange={e => setForm({...form,traction:e.target.value})} />
-      </div>
-      <button className="submit-btn" onClick={() => { if(form.company && form.email) setSubmitted(true); }}>Submit Application →</button>
-    </div></div>
-  );
-}
-
-// ── ADMIN PAGE ──────────────────────────────────────────────────────
-function AdminPage({ onLogout }) {
-  const [tab, setTab] = useState("applications");
-  const [apps, setApps] = useState(INITIAL_APPLICATIONS);
-
-  function approve(id) { setApps(a => a.map(x => x.id===id ? {...x,status:"approved"} : x)); }
-  function reject(id) { setApps(a => a.map(x => x.id===id ? {...x,status:"rejected"} : x)); }
-
-  const pending = apps.filter(a => a.status==="pending");
-  const approved = apps.filter(a => a.status==="approved");
-  const rejected = apps.filter(a => a.status==="rejected");
-
-  const totalRaised = STARTUPS.reduce((s,x) => s + x.raised, 0);
-
-  return (
-    <div className="admin-page">
-      <div className="admin-inner">
-        <div className="admin-header">
-          <div>
-            <div className="admin-title">🛡️ Admin Panel</div>
-            <div className="admin-sub">Manage startup applications and live rounds</div>
-          </div>
-          <button className="logout-btn" onClick={onLogout}>← Exit Admin</button>
-        </div>
-
-        <div className="admin-stats">
-          <div className="admin-stat"><div className="admin-stat-value" style={{ color:"var(--gold)" }}>{pending.length}</div><div className="admin-stat-label">Pending Review</div></div>
-          <div className="admin-stat"><div className="admin-stat-value" style={{ color:"var(--green)" }}>{STARTUPS.length}</div><div className="admin-stat-label">Live Startups</div></div>
-          <div className="admin-stat"><div className="admin-stat-value">{formatCurrency(totalRaised)}</div><div className="admin-stat-label">Total Raised</div></div>
-          <div className="admin-stat"><div className="admin-stat-value">{approved.length}</div><div className="admin-stat-label">Approved This Month</div></div>
-        </div>
-
-        <div className="admin-tabs">
-          {[["applications",`Applications (${pending.length} pending)`],["live","Live Rounds"]].map(([key,label]) => (
-            <button key={key} className={`admin-tab-btn ${tab===key?"active":""}`} onClick={() => setTab(key)}>{label}</button>
+              <p className="c-pitch" onClick={()=>setDetail(s)}>{s.pitch}</p>
+              <Ticker s={s}/>
+              <ProgBar s={s}/>
+              <div className="row-btns">
+                <button className="watch-btn" onClick={()=>openVideo(s)}>▶ Watch Pitch</button>
+                <InvBtn s={s}/>
+              </div>
+            </div>
           ))}
         </div>
-
-        {tab === "applications" && (
-          <div>
-            {pending.length > 0 && <div style={{ fontSize:"13px",fontWeight:700,color:"var(--gold)",marginBottom:"12px",textTransform:"uppercase",letterSpacing:"0.5px" }}>⏳ Pending Review</div>}
-            {pending.map(app => <AppCard key={app.id} app={app} onApprove={approve} onReject={reject} />)}
-            {approved.length > 0 && <div style={{ fontSize:"13px",fontWeight:700,color:"var(--green)",marginBottom:"12px",marginTop:"20px",textTransform:"uppercase",letterSpacing:"0.5px" }}>✅ Approved</div>}
-            {approved.map(app => <AppCard key={app.id} app={app} onApprove={approve} onReject={reject} />)}
-            {rejected.length > 0 && <div style={{ fontSize:"13px",fontWeight:700,color:"var(--red)",marginBottom:"12px",marginTop:"20px",textTransform:"uppercase",letterSpacing:"0.5px" }}>❌ Rejected</div>}
-            {rejected.map(app => <AppCard key={app.id} app={app} onApprove={approve} onReject={reject} />)}
-          </div>
-        )}
-
-        {tab === "live" && (
-          <div>
-            {STARTUPS.map(s => {
-              const pct = Math.round((s.raised/s.fundingGoal)*100);
-              const isClosed = s.raised >= s.fundingGoal;
-              return (
-                <div key={s.id} className="live-startup-card">
-                  <div className="live-startup-emoji">{s.emoji}</div>
-                  <div className="live-startup-info">
-                    <div className="live-startup-name">{s.name}</div>
-                    <div className="live-startup-meta">{s.sector.join(" · ")}</div>
-                  </div>
-                  <div className="live-startup-bar">
-                    <div className="live-bar-row">
-                      <span className="live-bar-pct">{pct}% {isClosed?"🔒":"funded"}</span>
-                      <span className="live-bar-amount">{formatCurrency(s.raised)} / {formatCurrency(s.fundingGoal)}</span>
-                    </div>
-                    <div className="live-bar-bg"><div className="live-bar-fill" style={{ width:`${Math.min(pct,100)}%` }} /></div>
-                  </div>
-                  <div style={{ fontSize:"12px",color:"var(--text3)",textAlign:"center",minWidth:"60px" }}>
-                    <div style={{ fontWeight:700,color:"var(--text)",fontSize:"14px" }}>{s.ticketsSold}</div>
-                    <div>investors</div>
-                  </div>
-                  {isClosed && <div className="closed-badge" style={{ fontSize:"12px",padding:"4px 10px" }}>Closed</div>}
-                </div>
-              );
-            })}
-          </div>
-        )}
+        <VideoModal/>
+        <InvestConfirmModal/>
+        <BottomNav/>
       </div>
-    </div>
-  );
-}
-
-function AppCard({ app, onApprove, onReject }) {
-  const statusClass = { pending:"status-pending", approved:"status-approved", rejected:"status-rejected" }[app.status];
-  return (
-    <div className="application-card">
-      <div className="app-card-header">
-        <div><div className="app-card-name">{app.company}</div><div className="app-card-founder">{app.founder} · {app.email}</div></div>
-        <div style={{ display:"flex",flexDirection:"column",alignItems:"flex-end",gap:"6px" }}>
-          <span className={`app-status ${statusClass}`}>{app.status.charAt(0).toUpperCase()+app.status.slice(1)}</span>
-          <span style={{ fontSize:"11px",color:"var(--text3)" }}>{app.date}</span>
-        </div>
-      </div>
-      <div className="app-card-details">
-        <div><div className="app-detail-label">Sector</div><div className="app-detail-value">{app.sector}</div></div>
-        <div><div className="app-detail-label">Looking to Raise</div><div className="app-detail-value">{app.raise}</div></div>
-        <div><div className="app-detail-label">Application ID</div><div className="app-detail-value">#{app.id}</div></div>
-      </div>
-      <div className="app-traction">📊 {app.traction}</div>
-      {app.status === "pending" && (
-        <div className="app-actions">
-          <button className="app-approve-btn" onClick={() => onApprove(app.id)}>✅ Approve & Onboard</button>
-          <button className="app-reject-btn" onClick={() => onReject(app.id)}>❌ Reject</button>
-        </div>
-      )}
-      {app.status !== "pending" && (
-        <div style={{ fontSize:"13px",color:"var(--text3)",fontStyle:"italic" }}>
-          {app.status === "approved" ? "✅ Approved — startup will be contacted for pitch recording." : "❌ Rejected — rejection email sent to founder."}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── ADMIN LOGIN ─────────────────────────────────────────────────────
-function AdminLogin({ onLogin }) {
-  const [pwd, setPwd] = useState("");
-  const [err, setErr] = useState(false);
-  function tryLogin() {
-    if (pwd === "instavest2026") { onLogin(); }
-    else { setErr(true); setTimeout(() => setErr(false), 2000); }
+    );
   }
-  return (
-    <div className="admin-page">
-      <div className="admin-login">
-        <div className="admin-lock">🛡️</div>
-        <div className="admin-login-title">Admin Access</div>
-        <div className="admin-login-sub">Enter your admin password to continue</div>
-        <div className="form-group">
-          <input className="form-input" type="password" placeholder="Admin password" value={pwd} onChange={e => setPwd(e.target.value)} onKeyDown={e => e.key==="Enter" && tryLogin()} style={{ textAlign:"center", borderColor: err?"var(--red)":"" }} />
-          {err && <div style={{ color:"var(--red)",fontSize:"12px",marginTop:"6px",textAlign:"center" }}>Incorrect password. Try: instavest2026</div>}
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // EXPLORE
+  // ═══════════════════════════════════════════════════════════════════════════
+  if (tab==="explore") {
+    const hot = trending();
+    const cards = filtered();
+    return (
+      <div className="app" style={{background:t.bg,color:t.text}}>
+        <style>{css}</style>
+        <div className="topbar">
+          <span className="logo">Insta<span>Vest</span></span>
+          <button className="dm-btn" onClick={()=>setDark(d=>!d)}>{dark?"☀️":"🌙"}</button>
         </div>
-        <button className="submit-btn" onClick={tryLogin}>Access Admin Panel →</button>
-        <div style={{ fontSize:"12px",color:"var(--text3)",marginTop:"12px" }}>Hint: instavest2026</div>
-      </div>
-    </div>
-  );
-}
-
-// ── ROOT APP ────────────────────────────────────────────────────────
-export default function InstaVest() {
-  const [darkMode, setDarkMode] = useState(true);
-  const [page, setPage] = useState("feed");
-  const [selectedStartup, setSelectedStartup] = useState(null);
-  const [liked, setLiked] = useState(new Set());
-  const [playingStartup, setPlayingStartup] = useState(null);
-  const [adminLoggedIn, setAdminLoggedIn] = useState(false);
-
-  function handleLike(id) { setLiked(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; }); }
-  function handleDetail(startup) { setSelectedStartup(startup); setPage("detail"); }
-  function handlePlay(startup) { setPlayingStartup(startup); }
-  function handleBack() { setSelectedStartup(null); setPage("feed"); }
-
-  return (
-    <>
-      <style>{style}</style>
-      <div className={`app ${darkMode ? "dark" : "light"}`}>
-        <nav className="nav">
-          <div className="nav-logo" onClick={() => setPage("feed")}>Insta<span>Vest</span></div>
-          <div className="nav-tabs">
-            {page === "detail"
-              ? <button className="nav-tab" onClick={handleBack}>← Feed</button>
-              : <>
-                  <button className={`nav-tab ${page==="feed"?"active":""}`} onClick={() => setPage("feed")}>Feed</button>
-                  <button className={`nav-tab ${page==="explore"?"active":""}`} onClick={() => setPage("explore")}>Explore</button>
-                  <button className={`nav-tab ${page==="apply"?"active":""}`} onClick={() => setPage("apply")}>Raise Capital</button>
-                  <button className={`nav-tab admin-tab ${page==="admin"?"active":""}`} onClick={() => setPage("admin")}>Admin</button>
-                </>
-            }
+        <div className="explore-wrap">
+          <div className="sec-head">🔥 Trending Now</div>
+          <div className="trend-scroll">
+            {hot.map((s,i)=>(
+              <div className="trend-card" key={s.id} onClick={()=>setDetail(s)}>
+                <div className="trend-rank">#{i+1} Trending</div>
+                <div className="trend-emoji">{s.emoji}</div>
+                <div className="trend-name">{s.name}</div>
+                <div className="trend-24h">+{fmt(s.raisedLast24h)} today</div>
+              </div>
+            ))}
           </div>
-          <div className="nav-right">
-            <button className="theme-btn" onClick={() => setDarkMode(d => !d)}>{darkMode ? "☀️ Light" : "🌙 Dark"}</button>
+
+          <div className="sec-head" style={{marginTop:8}}>Browse</div>
+          <div className="filter-row">
+            {SECTORS.map(sec=>(
+              <button key={sec} className={`chip ${sectorFilter===sec?"on":""}`} onClick={()=>setSectorFilter(sec)}>{sec}</button>
+            ))}
           </div>
-        </nav>
 
-        {playingStartup && (
-          <VideoPlayerModal startup={playingStartup} onClose={() => setPlayingStartup(null)} onDetail={s => { setPlayingStartup(null); handleDetail(s); }} />
-        )}
-
-        {page === "feed" && <FeedPage onDetail={handleDetail} liked={liked} onLike={handleLike} onPlay={handlePlay} />}
-        {page === "explore" && <ExplorePage onDetail={handleDetail} liked={liked} onLike={handleLike} onPlay={handlePlay} />}
-        {page === "apply" && <ApplyPage />}
-        {page === "detail" && selectedStartup && <DetailPage startup={selectedStartup} onBack={handleBack} liked={liked.has(selectedStartup.id)} onLike={handleLike} onPlay={handlePlay} />}
-        {page === "admin" && (adminLoggedIn ? <AdminPage onLogout={() => { setAdminLoggedIn(false); setPage("feed"); }} /> : <AdminLogin onLogin={() => setAdminLoggedIn(true)} />)}
+          {cards.map(s=>(
+            <div className="card" key={s.id}>
+              <div className="card-head" onClick={()=>setDetail(s)}>
+                <div className="c-emoji" style={{background:s.color+"20"}}>{s.emoji}</div>
+                <div className="c-info">
+                  <div className="c-name">{s.name}</div>
+                  <div className="c-tag">{s.tagline}</div>
+                </div>
+                <div className="s-badge">{s.sector}</div>
+              </div>
+              <ProgBar s={s}/>
+              <div className="row-btns">
+                <button className="watch-btn" onClick={()=>openVideo(s)}>▶ Watch</button>
+                <InvBtn s={s}/>
+              </div>
+            </div>
+          ))}
+        </div>
+        <VideoModal/>
+        <InvestConfirmModal/>
+        <BottomNav/>
       </div>
-    </>
-  );
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PORTFOLIO
+  // ═══════════════════════════════════════════════════════════════════════════
+  if (tab==="portfolio") {
+    const backed = liveStartups.filter(s=>investments[s.id]);
+    const total  = backed.reduce((a,s)=>a+s.ticketPrice,0);
+    return (
+      <div className="app" style={{background:t.bg,color:t.text}}>
+        <style>{css}</style>
+        <div className="topbar">
+          <span className="logo">Insta<span>Vest</span></span>
+          <button className="dm-btn" onClick={()=>setDark(d=>!d)}>{dark?"☀️":"🌙"}</button>
+        </div>
+        <div className="port-wrap">
+          <div className="port-summary">
+            <div className="port-lbl">Total Invested</div>
+            <div className="port-amt">{total>0 ? fmt(total) : "₹0"}</div>
+            <div className="port-lbl" style={{marginTop:8}}>{backed.length} startup{backed.length!==1?"s":""} backed</div>
+          </div>
+          {backed.length===0
+            ? <div className="empty"><div className="empty-ico">💰</div><p style={{fontSize:16,fontWeight:500}}>No investments yet</p><p style={{fontSize:13,marginTop:8}}>Browse the feed and back your first startup!</p></div>
+            : backed.map(s=>(
+              <div className="port-card" key={s.id} onClick={()=>setDetail(s)}>
+                <div style={{width:44,height:44,borderRadius:12,background:s.color+"20",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22}}>{s.emoji}</div>
+                <div style={{flex:1}}>
+                  <div style={{fontFamily:"Syne",fontWeight:700,fontSize:15}}>{s.name}</div>
+                  <div style={{fontSize:12,color:t.sub,marginTop:2}}>{s.sector} · {s.city}</div>
+                </div>
+                <div style={{textAlign:"right"}}>
+                  <div style={{fontFamily:"Syne",fontWeight:700,color:t.green}}>₹{s.ticketPrice.toLocaleString()}</div>
+                  <div style={{fontSize:11,color:t.sub,marginTop:2}}>{pct(s.raised,s.target)}% funded</div>
+                </div>
+              </div>
+            ))
+          }
+        </div>
+        <BottomNav/>
+      </div>
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PROFILE
+  // ═══════════════════════════════════════════════════════════════════════════
+  if (tab==="profile") {
+    const backed = Object.keys(investments).length;
+    const total  = liveStartups.filter(s=>investments[s.id]).reduce((a,s)=>a+s.ticketPrice,0);
+    return (
+      <div className="app" style={{background:t.bg,color:t.text}}>
+        <style>{css}</style>
+        <div className="topbar">
+          <span className="logo">Insta<span>Vest</span></span>
+          <button className="dm-btn" onClick={()=>setDark(d=>!d)}>{dark?"☀️":"🌙"}</button>
+        </div>
+        <div className="prof-wrap">
+          <div className="prof-header">
+            <div className="prof-avatar">👤</div>
+            <div className="prof-name">Sarash</div>
+            <div style={{color:t.sub,fontSize:14,marginTop:4}}>Early Investor · India 🇮🇳</div>
+          </div>
+          <div className="stats-row">
+            <div className="stat-card">
+              <div className="stat-val">{backed}</div>
+              <div className="stat-lbl">Backed</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-val">{total>0?fmt(total):"₹0"}</div>
+              <div className="stat-lbl">Invested</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-val">{liveStartups.length}</div>
+              <div className="stat-lbl">Live Deals</div>
+            </div>
+          </div>
+          <button className="admin-row-btn" onClick={()=>{setShowAdmin(true);setAdminAuthed(false);}}>
+            🔐 Admin Panel →
+          </button>
+        </div>
+        <BottomNav/>
+      </div>
+    );
+  }
+
+  return null;
 }
